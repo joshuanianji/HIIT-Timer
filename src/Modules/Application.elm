@@ -154,8 +154,8 @@ view (Application data) =
                                         , Font.center
                                         , Font.color Colours.sky
                                         ]
-                                        [ bigFont 48 Colours.sunflower setName
-                                        , bigFont 32 Colours.sunset name
+                                        [ bigFont 32 Colours.sunflower setName
+                                        , bigFont 48 Colours.sunset name
                                         ]
                                 , timerText = timerText secsLeft Colours.sunset
                                 , timerBar = timerBar secsLeft duration Colours.sunset
