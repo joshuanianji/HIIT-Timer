@@ -115,6 +115,6 @@ default =
     , countdown = True
     , countdownInput = TimeInput.init 5
     , set = setDict
-    , setCounter = 2
+    , setCounter = 1
     , error = Nothing
     }
