@@ -126,7 +126,6 @@ breakView duration =
         , Border.color Colours.grass
         , Border.rounded 4
         , Font.color Colours.grass
-        , Font.light
         ]
         [ Element.text "Break:"
         , Duration.viewFancy duration

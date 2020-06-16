@@ -1,29 +1,63 @@
-module Data.Application exposing (AppState(..), Data, ExerciseState(..), fromConfig)
+module Data.Application exposing (AppState(..), Data, TimeBlock(..), decreaseTimeBlock, fromConfig)
 
 import Data.Config as Config
-import Data.Duration as Duration exposing (Duration)
+import Data.Duration as Duration
 import Dict
-import List.Nonempty exposing (Nonempty)
+import List.Nonempty exposing (Nonempty(..))
 import Modules.Set as Set
 import Modules.TimeInput as TimeInput
 
 
 type alias Data =
-    { exercises : List ( String, List ( String, Duration ) )
-    , playing : Bool
-    , countdown : Maybe Duration
+    { playing : Bool
     , state : AppState
     }
 
 
 type AppState
-    = InProgress ExerciseState
+    = Starting (Nonempty TimeBlock) -- the exercises to hold on to lol
+    | InProgress (Nonempty TimeBlock)
     | Finished
 
 
-type ExerciseState
-    = CountingDown Int
-    | Exercising Int Int (Nonempty ( String, List ( String, Duration ) )) -- set number, exercise number and list of sets and exercises
+type TimeBlock
+    = Break Int Int
+    | CountDown Int Int
+    | Exercise
+        { setName : String
+        , name : String
+        , duration : Int
+        , secsLeft : Int
+        }
+
+
+
+-- if the timeblock ends we return Nothing
+
+
+decreaseTimeBlock : TimeBlock -> Maybe TimeBlock
+decreaseTimeBlock tb =
+    case tb of
+        Break curr total ->
+            if curr <= 1 then
+                Nothing
+
+            else
+                Just <| Break (curr - 1) total
+
+        CountDown curr total ->
+            if curr <= 1 then
+                Nothing
+
+            else
+                Just <| CountDown (curr - 1) total
+
+        Exercise dater ->
+            if dater.secsLeft <= 1 then
+                Nothing
+
+            else
+                Just <| Exercise { dater | secsLeft = dater.secsLeft - 1 }
 
 
 
@@ -33,46 +67,77 @@ type ExerciseState
 fromConfig : Config.Data -> Data
 fromConfig configData =
     let
+        breakSecs =
+            Duration.toSeconds <| TimeInput.getDuration configData.breakInput
+
+        setBreakSecs =
+            Duration.toSeconds <| TimeInput.getDuration configData.setBreakInput
+
+        countdownSecs =
+            Duration.toSeconds <| TimeInput.getDuration configData.countdownInput
+
         exercises =
             configData.set
                 |> Dict.map (\_ -> Set.getEssentials (TimeInput.getDuration configData.exerciseInput))
                 |> Dict.toList
                 |> List.map Tuple.second
+                |> List.filterMap
+                    (\( setName, exerciseList ) ->
+                        case exerciseList of
+                            [] ->
+                                Nothing
 
-        ( countdown, state ) =
-            if configData.countdown then
-                let
-                    countdownDuration =
-                        TimeInput.getDuration configData.countdownInput
-                in
-                ( Just countdownDuration, InProgress <| CountingDown (Duration.toSeconds countdownDuration) )
+                            x :: xs ->
+                                Nonempty x xs
+                                    |> List.Nonempty.map
+                                        (\( name, duration ) ->
+                                            Exercise
+                                                { setName = setName
+                                                , name = name
+                                                , duration = Duration.toSeconds duration
+                                                , secsLeft = Duration.toSeconds duration
+                                                }
+                                        )
+                                    |> intersperseNonempty (Break breakSecs breakSecs)
+                                    |> Just
+                    )
+                |> List.Nonempty.fromList
+                |> Maybe.map
+                    (Break setBreakSecs setBreakSecs
+                        |> List.Nonempty.fromElement
+                        |> intersperseNonempty
+                    )
+                |> Maybe.map List.Nonempty.concat
 
-            else
-                ( Nothing
-                , case exercises of
-                    set :: tl ->
-                        InProgress <| Exercising 1 1 (toNonEmptyList ( set, tl ))
+        state =
+            case exercises of
+                Just blocks ->
+                    if configData.countdown then
+                        blocks
+                            |> List.Nonempty.cons (CountDown countdownSecs countdownSecs)
+                            |> Starting
 
-                    [] ->
-                        Finished
-                )
+                    else
+                        Starting blocks
+
+                -- no elements
+                Nothing ->
+                    Finished
     in
     { playing = False
-    , exercises = exercises
-    , countdown = countdown
     , state = state
     }
 
 
 
--- helper
+-- internal helpers
 
 
-toNonEmptyList : ( a, List a ) -> Nonempty a
-toNonEmptyList ( hd, tl ) =
-    case List.Nonempty.fromList tl of
-        Nothing ->
-            List.Nonempty.fromElement hd
+intersperseNonempty : a -> Nonempty a -> Nonempty a
+intersperseNonempty a l =
+    case List.intersperse a (List.Nonempty.toList l) of
+        [] ->
+            List.Nonempty.fromElement a
 
-        Just lst ->
-            List.Nonempty.append (List.Nonempty.fromElement hd) lst
+        x :: xs ->
+            Nonempty x xs

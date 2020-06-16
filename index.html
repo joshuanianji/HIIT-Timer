@@ -13,8 +13,17 @@
 
 <body>
     <div id="elm"></div>
+    <script src="./assets/howler.core.js"></script>
     <script src="elm.js"></script>
     <script>
+        const whistle = new Howl({
+            src: ['assets/sounds/whistle.mp3']
+        });
+
+        const tada = new Howl({
+            src: ['assets/sounds/tada.mp3', 'assets/sounds/tada.wav']
+        });
+
         var storedConfig = localStorage.getItem('config');
         console.log("Retrieved state: ", storedConfig);
 
@@ -30,11 +39,19 @@
             }
         });
 
-        app.ports.storeConfig.subscribe(function (config) {
+        app.ports.storeConfig.subscribe(config => {
             let configJson = JSON.stringify(config);
             localStorage.setItem('config', configJson);
             console.log("Saved state: ", configJson);
             app.ports.storeConfigSuccess.send(null)
+        });
+
+        app.ports.playWhistle.subscribe(() => {
+            whistle.play()
+        });
+
+        app.ports.playTada.subscribe(() => {
+            tada.play()
         });
     </script>
 </body>

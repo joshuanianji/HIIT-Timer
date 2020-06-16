@@ -126,7 +126,6 @@ view options (TimeInput data) =
                     [ Element.centerY
                     , Element.centerX
                     , Element.padding 4
-                    , Font.light
                     , Font.size 20
                     ]
                 <|

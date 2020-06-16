@@ -2,20 +2,13 @@ module Main exposing (application, main)
 
 import Browser
 import Colours
-import Data.Duration as Duration exposing (Duration)
 import Data.Flags exposing (Flags, WindowSize)
-import Dict exposing (Dict)
 import Element exposing (Element)
 import Element.Font as Font
 import FeatherIcons as Icon
 import Html exposing (Html)
-import Json.Decode
-import Json.Encode
 import Modules.Application as Application exposing (Application)
 import Modules.Config as Config exposing (Config)
-import Modules.Exercise as Exercise exposing (Exercise)
-import Modules.Set as Set exposing (Set)
-import Modules.TimeInput as TimeInput exposing (TimeInput)
 import Ports
 import Process
 import Task
@@ -99,12 +92,16 @@ view model =
                         }
 
                 Application ->
-                    Util.viewIcon
-                        { icon = Icon.sliders
-                        , color = Colours.sky
-                        , size = 50
-                        , msg = Just ToSettings
-                        }
+                    if Application.exercising model.application then
+                        Element.none
+
+                    else
+                        Util.viewIcon
+                            { icon = Icon.sliders
+                            , color = Colours.sky
+                            , size = 50
+                            , msg = Just ToSettings
+                            }
     in
     Element.column
         [ Element.width Element.fill
@@ -212,6 +209,7 @@ settings model =
 application : Model -> Element Msg
 application model =
     Application.view model.application
+        |> Element.map ApplicationMsg
 
 
 
@@ -222,6 +220,7 @@ type Msg
     = Tick Time.Posix
     | AdjustTimeZone Time.Zone
     | ConfigMsg Config.Msg
+    | ApplicationMsg Application.Msg
     | ToApplication
     | ToSettings -- navigate to settings
     | ToLocalStorage -- save to local storage
@@ -246,6 +245,13 @@ update msg model =
 
         ConfigMsg configMsg ->
             ( { model | config = Config.update configMsg model.config }, Cmd.none )
+
+        ApplicationMsg applicationMsg ->
+            let
+                ( newApp, appCmd ) =
+                    Application.update applicationMsg model.application
+            in
+            ( { model | application = newApp }, Cmd.map ApplicationMsg appCmd )
 
         ToApplication ->
             ( { model
@@ -278,8 +284,10 @@ update msg model =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions _ =
+subscriptions model =
     Sub.batch
         [ Time.every 1000 Tick
+        , Application.subscriptions model.application
+            |> Sub.map ApplicationMsg
         , Ports.storeConfigSuccess <| always StoreConfigSuccess
         ]

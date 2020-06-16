@@ -1,21 +1,20 @@
-module Modules.Application exposing (Application, init, view)
+module Modules.Application exposing (Application, Msg, exercising, init, subscriptions, update, view)
 
-import Browser
 import Colours
 import Data.Application as Data exposing (Data)
 import Data.Config
-import Data.Duration as Duration exposing (Duration)
-import Data.Flags exposing (Flags, WindowSize)
-import Dict exposing (Dict)
 import Element exposing (Element)
+import Element.Background as Background
 import Element.Font as Font
 import FeatherIcons as Icon
-import Html exposing (Html)
+import List.Nonempty exposing (Nonempty(..))
+import Ports
+import Time
 import Util
 
 
 
--- type
+-- TYPE
 
 
 type Application
@@ -28,10 +27,24 @@ init =
 
 
 
--- view
+-- Main.elm uses this to guess whether or not to show the thing at the bottom
 
 
-view : Application -> Element msg
+exercising : Application -> Bool
+exercising (Application data) =
+    case data.state of
+        Data.InProgress _ ->
+            True
+
+        _ ->
+            False
+
+
+
+-- VIEW
+
+
+view : Application -> Element Msg
 view (Application data) =
     Element.column
         [ Element.width Element.fill
@@ -49,71 +62,145 @@ view (Application data) =
 
         -- the main view
         , case data.state of
-            Data.InProgress exercisingState ->
-                let
-                    ( upperElem, bottomElem ) =
-                        case exercisingState of
-                            Data.CountingDown secs ->
-                                ( Element.el
-                                    [ Element.centerX
-                                    , Font.size 32
-                                    , Font.center
-                                    , Font.color Colours.sky
-                                    ]
-                                  <|
-                                    Element.text "Countdown"
-                                , Element.el
-                                    [ Element.centerX
-                                    , Font.color Colours.sky
-                                    , Font.size 100
-                                    ]
-                                  <|
-                                    Element.text <|
-                                        String.fromInt secs
-                                )
-
-                            Data.Exercising setNum exerciseNum nonEmpty ->
-                                ( Element.none, Element.none )
-
-                    display colour name currN totalN pp =
-                        Element.column
+            Data.Starting blocks ->
+                Element.el
+                    [ Element.width Element.fill
+                    , Element.centerY
+                    , Element.above <|
+                        Element.el
                             [ Element.centerX
-                            , Font.color colour
+                            , Element.moveUp 100
+                            , Font.size 50
+                            , Font.center
+                            , Font.color Colours.sunset
+                            ]
+                        <|
+                            Element.text "Ready?"
+                    ]
+                <|
+                    (Element.el
+                        [ Element.centerX
+                        , Element.padding 4
+                        ]
+                     <|
+                        Util.viewIcon
+                            { icon = Icon.play
+                            , color = Colours.sunset
+                            , size = 75
+                            , msg = Just <| StartExercise blocks
+                            }
+                    )
+
+            Data.InProgress blocks ->
+                let
+                    bigFont size color label =
+                        Element.el
+                            [ Element.centerX
+                            , Font.size size
+                            , Font.center
+                            , Font.color color
                             , Font.light
                             ]
-                            [ Element.el [ Font.size 32, Font.center ] <| Element.text name
-                            , Element.paragraph
-                                [ Font.center ]
-                                [ Element.el [ Font.color Colours.black ] <| Element.text (pp ++ " ")
-                                , Element.text <| String.fromInt currN
-                                , Element.el [ Font.color Colours.black ] <| Element.text " of "
-                                , Element.text <| String.fromInt totalN
+                        <|
+                            Element.text label
+
+                    timerText secsLeft color =
+                        Element.el
+                            [ Element.centerX
+                            , Font.color color
+                            , Font.light
+                            , Font.size 100
+                            ]
+                        <|
+                            Element.text <|
+                                String.fromInt secsLeft
+
+                    timerBar secsLeft total color =
+                        Element.row
+                            [ Element.width Element.fill ]
+                            [ Element.el
+                                [ Element.width <| Element.fillPortion secsLeft
+                                , Element.height (Element.px 5)
+                                , Background.color color
                                 ]
+                                Element.none
+                            , Element.el
+                                [ Element.width <| Element.fillPortion (total - secsLeft) ]
+                                Element.none
                             ]
 
-                    ( centerButtonIcon, buttonColour ) =
+                    dataGroup =
+                        case List.Nonempty.head blocks of
+                            Data.CountDown secsLeft total ->
+                                { upperElem = bigFont 32 Colours.sky "Countdown"
+                                , timerText = timerText secsLeft Colours.sky
+                                , timerBar = timerBar secsLeft total Colours.sky
+                                , theme = Colours.sky
+                                }
+
+                            Data.Break secsLeft total ->
+                                { upperElem = bigFont 32 Colours.grass "Break"
+                                , timerText = timerText secsLeft Colours.grass
+                                , timerBar = timerBar secsLeft total Colours.grass
+                                , theme = Colours.grass
+                                }
+
+                            Data.Exercise { setName, name, duration, secsLeft } ->
+                                { upperElem =
+                                    Element.column
+                                        [ Element.centerX
+                                        , Element.spacing 16
+                                        , Font.size 32
+                                        , Font.center
+                                        , Font.color Colours.sky
+                                        ]
+                                        [ bigFont 48 Colours.sunflower setName
+                                        , bigFont 32 Colours.sunset name
+                                        ]
+                                , timerText = timerText secsLeft Colours.sunset
+                                , timerBar = timerBar secsLeft duration Colours.sunset
+                                , theme = Colours.sunset
+                                }
+
+                    centerButtonIcon =
                         if data.playing then
-                            ( Icon.pause, Colours.sunset )
+                            Icon.pause
 
                         else
-                            ( Icon.play, Colours.sky )
+                            Icon.play
                 in
-                Element.column
+                Element.el
                     [ Element.width Element.fill
-                    , Element.spacing 48
                     , Element.centerY
+                    , Element.above <|
+                        Element.el
+                            [ Element.moveUp 100
+                            , Element.centerX
+                            ]
+                            dataGroup.upperElem
+                    , Element.below <|
+                        Element.el
+                            [ Element.moveDown 100
+                            , Element.centerX
+                            ]
+                            dataGroup.timerText
+                    , Element.inFront <|
+                        (Util.viewIcon
+                            { icon = centerButtonIcon
+                            , color = dataGroup.theme
+                            , size = 75
+                            , msg = Just TogglePlay
+                            }
+                            |> Element.el
+                                [ Element.centerX
+                                , Element.moveUp 58
+                                , Element.padding 4
+                                , Background.color Colours.white
+                                ]
+                        )
                     ]
-                    [ upperElem
-                    , Util.viewIcon
-                        { icon = centerButtonIcon
-                        , color = buttonColour
-                        , size = 75
-                        , msg = Nothing
-                        }
-                        |> Element.el
-                            [ Element.centerX ]
-                    , bottomElem
-                    ]
+                    dataGroup.timerBar
+                    |> Util.surround 1 4 1
 
             Data.Finished ->
                 Element.column
@@ -123,19 +210,88 @@ view (Application data) =
                     ]
                     [ Util.viewIcon
                         { icon = Icon.star
-                        , color = Colours.sunset
+                        , color = Colours.sunflower
                         , size = 100
                         , msg = Nothing
                         }
                         |> Element.el
-                            [ Element.centerX
-                            ]
+                            [ Element.centerX ]
                     , Element.paragraph
-                        [ Font.color Colours.sunset
+                        [ Font.color Colours.sunflower
                         , Font.center
                         , Font.light
                         , Font.size 50
                         ]
                         [ Element.text "WOOHOO!" ]
+                    , Element.paragraph
+                        [ Font.color Colours.sunflower
+                        , Font.center
+                        , Font.light
+                        ]
+                        [ Element.text "Congradulations! You finished!" ]
                     ]
         ]
+
+
+
+-- UPDATE
+
+
+type Msg
+    = StartExercise (Nonempty Data.TimeBlock)
+    | NextSecond
+    | TogglePlay
+
+
+update : Msg -> Application -> ( Application, Cmd Msg )
+update msg (Application data) =
+    case msg of
+        StartExercise blocks ->
+            ( Application
+                { data
+                    | state = Data.InProgress blocks
+                    , playing = True
+                }
+            , Ports.playWhistle ()
+            )
+
+        NextSecond ->
+            case data.state of
+                Data.InProgress (Nonempty block tl) ->
+                    case Data.decreaseTimeBlock block of
+                        Nothing ->
+                            case tl of
+                                -- no more exercises
+                                [] ->
+                                    ( Application { data | state = Data.Finished }, Ports.playTada () )
+
+                                x :: xs ->
+                                    ( Application { data | state = Data.InProgress <| Nonempty x xs }, Ports.playWhistle () )
+
+                        Just newBlock ->
+                            ( Application { data | state = Data.InProgress <| Nonempty newBlock tl }, Cmd.none )
+
+                _ ->
+                    -- ignore
+                    ( Application data, Cmd.none )
+
+        TogglePlay ->
+            ( Application { data | playing = not data.playing }, Ports.playWhistle () )
+
+
+
+-- SUBSCRIPTIONS
+
+
+subscriptions : Application -> Sub Msg
+subscriptions (Application data) =
+    case data.state of
+        Data.InProgress _ ->
+            if data.playing then
+                Time.every 1000 (always NextSecond)
+
+            else
+                Sub.none
+
+        _ ->
+            Sub.none
