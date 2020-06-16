@@ -1,4 +1,4 @@
-module Modules.Exercise exposing (Exercise, breakView, essentials, init, updateName, view)
+module Modules.Exercise exposing (Exercise, breakView, essentials, fromData, getData, init, updateName, view)
 
 import Colours
 import Data.Duration as Duration exposing (Duration)
@@ -57,6 +57,20 @@ essentials duration (Exercise data) =
 
 
 
+-- for localstorage dudes
+
+
+getData : Exercise -> Data
+getData (Exercise data) =
+    data
+
+
+fromData : Data -> Exercise
+fromData =
+    Exercise
+
+
+
 -- VIEW
 
 
@@ -77,8 +91,10 @@ view options (Exercise data) =
             ]
             [ Input.text
                 [ Font.size 28
-                , Border.width 0
+                , Border.color Colours.white
                 , Element.padding 0
+                , Element.mouseOver
+                    [ Border.color Colours.sunset ]
                 ]
                 { onChange = options.updateName data.position
                 , text = data.name

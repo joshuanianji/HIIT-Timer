@@ -74,7 +74,10 @@ view options (TimeInput data) =
         ]
         [ Input.text
             [ Element.width (Element.px 175)
-            , Element.padding 10
+            , Element.padding 24
+
+            -- FONT SIZE 0 HIDES THE STUPID UGLY BEHIND-THE-SCENES TEXT
+            , Font.size 0
 
             -- it's weird how inFront works better  - if i write behindContent, it'll take two clicks to focus on the input.
             , Element.inFront <|
@@ -83,6 +86,7 @@ view options (TimeInput data) =
                     [ Element.padding 8
                     , Element.spacing 3
                     , Element.centerY
+                    , Font.size 20
                     , Element.alignRight
                     , Font.color Colours.black
 
@@ -121,7 +125,9 @@ view options (TimeInput data) =
                 Input.labelLeft
                     [ Element.centerY
                     , Element.centerX
+                    , Element.padding 4
                     , Font.light
+                    , Font.size 20
                     ]
                 <|
                     (options.displayText

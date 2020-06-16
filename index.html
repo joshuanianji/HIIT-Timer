@@ -15,6 +15,9 @@
     <div id="elm"></div>
     <script src="elm.js"></script>
     <script>
+        var storedConfig = localStorage.getItem('config');
+        console.log("Retrieved state: ", storedConfig);
+
         var app = Elm.Main.init({
             node: document.getElementById('elm'),
             flags: {
@@ -22,8 +25,16 @@
                     height: window.innerHeight,
                     width: window.innerWidth
                 },
-                posix: (new Date()).getTime()
+                posix: (new Date()).getTime(),
+                storedConfig: JSON.parse(storedConfig)
             }
+        });
+
+        app.ports.storeConfig.subscribe(function (config) {
+            let configJson = JSON.stringify(config);
+            localStorage.setItem('config', configJson);
+            console.log("Saved state: ", configJson);
+            app.ports.storeConfigSuccess.send(null)
         });
     </script>
 </body>

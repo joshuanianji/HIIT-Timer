@@ -1,4 +1,4 @@
-module Data.Duration exposing (Duration, add, fromString, init, sanitize, toSeconds, toString, viewFancy)
+module Data.Duration exposing (Duration, add, fromString, init, sanitize, times, toSeconds, toString, viewFancy)
 
 import Element exposing (Element)
 import Element.Font as Font
@@ -37,7 +37,7 @@ sanitize { minutes, seconds } =
 
 
 
--- turns it into pure seconds (for exercise recursion when doing countdown)
+-- turns it into pure seconds (for exercise recursion and localstorage)
 
 
 toSeconds : Duration -> Int
@@ -72,13 +72,21 @@ fromString =
 
 
 
--- addition
+-- MATH
 
 
 add : Duration -> Duration -> Duration
 add d1 d2 =
     { minutes = d1.minutes + d2.minutes
     , seconds = d1.seconds + d2.seconds
+    }
+        |> sanitize
+
+
+times : Duration -> Int -> Duration
+times { minutes, seconds } n =
+    { minutes = minutes * n
+    , seconds = seconds * n
     }
         |> sanitize
 

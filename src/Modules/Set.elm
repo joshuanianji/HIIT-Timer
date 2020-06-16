@@ -1,6 +1,8 @@
 module Modules.Set exposing
     ( Set
     , deleteExercise
+    , fromData
+    , getData
     , getEssentials
     , init
     , newExercise
@@ -19,13 +21,10 @@ import Dict exposing (Dict)
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
-import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
 import FeatherIcons as Icon
-import Html.Attributes
 import Modules.Exercise as Exercise exposing (Exercise)
-import Modules.TimeInput as TimeInput
 import Util
 
 
@@ -49,7 +48,6 @@ type alias Data =
     -- same things as exercise data
     , position : Int
     , name : String
-    , editingName : Bool
 
     -- toggle
     , expanded : Bool
@@ -93,16 +91,15 @@ init : Int -> Set
 init n =
     let
         exercises =
-            List.map2 Tuple.pair (List.range 1 6) (List.map Exercise.init <| List.range 1 6)
+            List.map2 Tuple.pair (List.range 1 4) (List.map Exercise.init <| List.range 1 4)
                 |> Dict.fromList
     in
     Set
         { exercises = exercises
-        , exerciseCounter = 6
-        , repeat = 3
+        , exerciseCounter = 4
+        , repeat = 2
         , position = n
         , name = "Set " ++ String.fromInt n
-        , editingName = False
         , expanded = False
         }
 
@@ -119,6 +116,20 @@ getEssentials exerciseDuration (Set data) =
         |> Dict.toList
         |> List.map Tuple.second
         |> (\l -> ( data.name, l ))
+
+
+
+-- for localstorage stuff
+
+
+getData : Set -> Data
+getData (Set data) =
+    data
+
+
+fromData : Data -> Set
+fromData =
+    Set
 
 
 
@@ -146,8 +157,10 @@ view options (Set data) =
                     [ Element.width (Element.fill |> Element.maximum 400)
                     , Font.size 36
                     , Font.color Colours.sunflower
-                    , Border.width 0
+                    , Border.color Colours.white
                     , Element.padding 0
+                    , Element.mouseOver
+                        [ Border.color Colours.sunflower ]
                     ]
                     { onChange = options.updateName data.position
                     , text = data.name
@@ -155,7 +168,7 @@ view options (Set data) =
                     , label = Input.labelHidden "New name for set"
                     }
 
-                -- number of repeats lol
+                -- number of repeats
                 , Element.row
                     []
                     [ Input.text
@@ -164,7 +177,7 @@ view options (Set data) =
                         { onChange =
                             String.filter Char.isDigit
                                 >> String.toInt
-                                >> Maybe.withDefault 0
+                                >> Maybe.withDefault 1
                                 >> options.onUpdateRepeat data.position
                         , text = String.fromInt data.repeat
                         , placeholder = Nothing
@@ -178,28 +191,75 @@ view options (Set data) =
                         }
                     ]
 
-                -- total time
-                , Element.row
-                    [ Font.light
-                    , Element.spacing 2
+                -- total times
+                , let
+                    setTotalTime =
+                        Set data
+                            |> getEssentials options.exerciseDuration
+                            |> Tuple.second
+                            |> List.map Tuple.second
+                            -- adding in break durations
+                            |> List.intersperse options.breakDuration
+                            |> List.foldl Duration.add (Duration.init 0)
+                  in
+                  Element.column
+                    [ Element.width Element.fill
+                    , Element.spacing 8
                     ]
-                    [ Element.text "Total time: "
-                    , Set data
-                        |> getEssentials options.exerciseDuration
-                        |> Tuple.second
-                        |> List.map Tuple.second
-                        -- adding in break durations
-                        |> List.intersperse options.breakDuration
-                        |> List.foldl Duration.add (Duration.init 0)
-                        |> Duration.viewFancy
-                        |> Element.el
-                            [ Font.color Colours.sunflower ]
-                    , Element.text " for "
-                    , Dict.size data.exercises
-                        |> String.fromInt
-                        |> Element.text
-                        |> Element.el [ Font.color Colours.sunflower ]
-                    , Element.el [ Font.color Colours.sunflower ] <| Element.text " exercises."
+                    [ Element.row
+                        [ -- total time of a set
+                          Font.light
+                        , Element.spacing 2
+                        ]
+                        [ setTotalTime
+                            |> Duration.viewFancy
+                            |> Element.el
+                                [ Font.color Colours.sunflower ]
+                        , Element.text " for "
+                        , Dict.size data.exercises
+                            |> String.fromInt
+                            |> Element.text
+                            |> Element.el [ Font.color Colours.sunflower ]
+                        , Element.el [ Font.color Colours.sunflower ] <|
+                            Element.text
+                                (if Dict.size data.exercises == 1 then
+                                    " exercise."
+
+                                 else
+                                    " exercises."
+                                )
+                        ]
+
+                    -- total time including repeats
+                    , if data.repeat <= 1 then
+                        -- no point in repeating the same info
+                        Element.none
+
+                      else
+                        Element.row
+                            [ Font.light
+                            , Element.spacing 2
+                            ]
+                            [ Element.text "Total time: "
+                            , Duration.add (Duration.times setTotalTime data.repeat) (Duration.times options.breakDuration (data.repeat - 1))
+                                |> Duration.viewFancy
+                                |> Element.el
+                                    [ Font.color Colours.sunflower ]
+                            , Element.text ", including "
+                            , data.repeat
+                                - 1
+                                |> String.fromInt
+                                |> Element.text
+                                |> Element.el [ Font.color Colours.sunflower ]
+                            , Element.el [ Font.color Colours.sunflower ] <|
+                                Element.text
+                                    (if data.repeat == 2 then
+                                        " break."
+
+                                     else
+                                        " breaks."
+                                    )
+                            ]
                     ]
                 ]
 
@@ -219,10 +279,10 @@ view options (Set data) =
                 , Util.viewIcon
                     { icon =
                         if data.expanded then
-                            Icon.minus
+                            Icon.chevronUp
 
                         else
-                            Icon.plus
+                            Icon.chevronDown
                     , color = Colours.sky
                     , size = 25
                     , msg = Just <| options.toggleExpand data.position
