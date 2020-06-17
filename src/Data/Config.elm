@@ -1,6 +1,7 @@
 module Data.Config exposing (Data, decodeLocalStorage, default, encode, fromLocalStorage)
 
 -- the data the Config module stores (accessible to the App data as well)
+-- helpful to put JSON decode and encode stuff without clogging up the Modules.Config.elm file
 
 import Data.Duration as Duration
 import Data.LocalStorageConfig as LocalStorageConfig

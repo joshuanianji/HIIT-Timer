@@ -1,4 +1,4 @@
-module Util exposing (surround, unselectable, viewIcon)
+module Util exposing (Position(..), surround, unselectable, viewIcon, withTooltip)
 
 -- misc functions
 
@@ -63,3 +63,44 @@ viewIcon data =
 unselectable : Element.Attribute msg
 unselectable =
     Element.htmlAttribute (Html.Attributes.class "noselect")
+
+
+withTooltip : { position : Position, content : String } -> Element msg -> Element msg
+withTooltip { position, content } =
+    Element.el
+        [ Element.height Element.fill
+        , Element.width Element.fill
+        , Element.htmlAttribute <| Html.Attributes.class (positionToClass position)
+        , Element.htmlAttribute <| Html.Attributes.attribute "data-tooltip" content
+        ]
+
+
+type Position
+    = Top
+    | Bottom
+    | Left
+    | Right
+
+
+
+-- internal tooltip stuff
+
+
+positionToClass : Position -> String
+positionToClass p =
+    let
+        str =
+            case p of
+                Top ->
+                    "top"
+
+                Bottom ->
+                    "bottom"
+
+                Left ->
+                    "left"
+
+                Right ->
+                    "right"
+    in
+    "simptip-position-" ++ str

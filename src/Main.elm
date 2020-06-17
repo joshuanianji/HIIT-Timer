@@ -12,7 +12,6 @@ import Modules.Config as Config exposing (Config)
 import Ports
 import Process
 import Task
-import Time
 import Util
 
 
@@ -35,9 +34,7 @@ main =
 
 
 type alias Model =
-    { time : Time.Posix
-    , zone : Time.Zone
-    , windowSize : WindowSize
+    { windowSize : WindowSize
     , state : State
 
     -- internal configuration data
@@ -62,15 +59,13 @@ init flags =
         config =
             Config.init flags.storedConfig
     in
-    ( { time = Time.millisToPosix flags.posix
-      , zone = Time.utc
-      , windowSize = flags.windowSize
+    ( { windowSize = flags.windowSize
       , state = Settings
       , config = config
       , application = Application.init (Config.getData config)
       , showSavedCheck = False
       }
-    , Task.perform AdjustTimeZone Time.here
+    , Cmd.none
     )
 
 
@@ -80,47 +75,13 @@ init flags =
 
 view : Model -> Html Msg
 view model =
-    let
-        navButton =
-            case model.state of
-                Settings ->
-                    Util.viewIcon
-                        { icon = Icon.zap
-                        , color = Colours.sunset
-                        , size = 50
-                        , msg = Just ToApplication
-                        }
-
-                Application ->
-                    if Application.exercising model.application then
-                        Element.none
-
-                    else
-                        Util.viewIcon
-                            { icon = Icon.sliders
-                            , color = Colours.sky
-                            , size = 50
-                            , msg = Just ToSettings
-                            }
-    in
     Element.column
         [ Element.width Element.fill
         , Element.height Element.fill
         , Element.padding 16
         , Element.spacing 24
-        , Element.inFront <|
-            Element.el
-                [ Element.alignLeft
-                , Element.moveDown (toFloat model.windowSize.height - 150)
-                , Element.padding 32
-                ]
-                navButton
         ]
-        [ Element.el
-            [ Element.centerX ]
-          <|
-            clock model.time model.zone
-        , case model.state of
+        [ case model.state of
             Settings ->
                 settings model
 
@@ -133,31 +94,12 @@ view model =
             ]
 
 
-clock : Time.Posix -> Time.Zone -> Element Msg
-clock time zone =
-    let
-        hour =
-            String.fromInt (Time.toHour zone time)
-
-        minute =
-            String.pad 2 '0' <| String.fromInt (Time.toMinute zone time)
-    in
-    Element.paragraph
-        [ Font.center
-        , Font.size 48
-        , Font.light
-        ]
-        [ Element.text hour
-        , Element.text ":"
-        , Element.text minute
-        ]
-
-
 settings : Model -> Element Msg
 settings model =
     Element.column
         [ Element.width Element.fill
         , Element.height Element.fill
+        , Element.spacing 32
         ]
         [ Config.view model.config
             |> Element.map ConfigMsg
@@ -173,34 +115,41 @@ settings model =
                 , size = 50
                 , msg = Just ToApplication
                 }
-            , Element.el
-                [ Element.onRight <|
-                    if model.showSavedCheck then
-                        Element.row
-                            [ Element.spacing 4
-                            , Element.padding 4
-                            , Element.centerY
-                            , Font.color Colours.grass
-                            , Font.light
-                            ]
-                            [ Util.viewIcon
-                                { icon = Icon.check
-                                , color = Colours.grass
-                                , size = 20
-                                , msg = Nothing
-                                }
-                            , Element.text "Settings saved to Local Storage"
-                            ]
+                |> Util.withTooltip
+                    { position = Util.Top
+                    , content = "Finish editing"
+                    }
+            , Util.viewIcon
+                { icon = Icon.save
+                , color = Colours.sky
+                , size = 50
+                , msg = Just ToLocalStorage
+                }
+                |> Element.el
+                    [ Element.onRight <|
+                        if model.showSavedCheck then
+                            Element.row
+                                [ Element.spacing 4
+                                , Element.padding 4
+                                , Element.centerY
+                                , Font.color Colours.grass
+                                , Font.light
+                                ]
+                                [ Util.viewIcon
+                                    { icon = Icon.check
+                                    , color = Colours.grass
+                                    , size = 20
+                                    , msg = Nothing
+                                    }
+                                , Element.text "Settings saved to Local Storage"
+                                ]
 
-                    else
-                        Element.none
-                ]
-              <|
-                Util.viewIcon
-                    { icon = Icon.save
-                    , color = Colours.sky
-                    , size = 50
-                    , msg = Just ToLocalStorage
+                        else
+                            Element.none
+                    ]
+                |> Util.withTooltip
+                    { position = Util.Top
+                    , content = "Save configuration to Local Storage"
                     }
             ]
         ]
@@ -208,8 +157,20 @@ settings model =
 
 application : Model -> Element Msg
 application model =
-    Application.view model.application
-        |> Element.map ApplicationMsg
+    Element.column
+        [ Element.width Element.fill
+        , Element.height Element.fill
+        ]
+        [ Application.view model.application
+            |> Element.map ApplicationMsg
+        , Util.viewIcon
+            { icon = Icon.settings
+            , color = Colours.sky
+            , size = 50
+            , msg = Just ToSettings
+            }
+            |> Element.el [ Element.centerX ]
+        ]
 
 
 
@@ -217,9 +178,7 @@ application model =
 
 
 type Msg
-    = Tick Time.Posix
-    | AdjustTimeZone Time.Zone
-    | ConfigMsg Config.Msg
+    = ConfigMsg Config.Msg
     | ApplicationMsg Application.Msg
     | ToApplication
     | ToSettings -- navigate to settings
@@ -235,14 +194,6 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Tick newTime ->
-            ( { model | time = newTime }, Cmd.none )
-
-        AdjustTimeZone newZone ->
-            ( { model | zone = newZone }
-            , Cmd.none
-            )
-
         ConfigMsg configMsg ->
             ( { model | config = Config.update configMsg model.config }, Cmd.none )
 
@@ -286,8 +237,7 @@ update msg model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ Time.every 1000 Tick
-        , Application.subscriptions model.application
+        [ Application.subscriptions model.application
             |> Sub.map ApplicationMsg
         , Ports.storeConfigSuccess <| always StoreConfigSuccess
         ]

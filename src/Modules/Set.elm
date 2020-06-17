@@ -7,6 +7,7 @@ module Modules.Set exposing
     , init
     , newExercise
     , toggleExpand
+    , totalTime
     , updateExerciseName
     , updateName
     , updateRepeat
@@ -119,6 +120,35 @@ getEssentials exerciseDuration (Set data) =
 
 
 
+-- get total time
+
+
+totalTime :
+    { exerciseDuration : Duration
+    , breakDuration : Duration
+    }
+    -> Set
+    -> Duration
+totalTime options (Set data) =
+    Duration.add (Duration.times (getTimeWithoutRepeats options (Set data)) data.repeat) (Duration.times options.breakDuration (data.repeat - 1))
+
+
+getTimeWithoutRepeats :
+    { exerciseDuration : Duration
+    , breakDuration : Duration
+    }
+    -> Set
+    -> Duration
+getTimeWithoutRepeats options set =
+    getEssentials options.exerciseDuration set
+        |> Tuple.second
+        |> List.map Tuple.second
+        -- adding in break durations
+        |> List.intersperse options.breakDuration
+        |> List.foldl Duration.add (Duration.init 0)
+
+
+
 -- for localstorage stuff
 
 
@@ -192,17 +222,7 @@ view options (Set data) =
                     ]
 
                 -- total times
-                , let
-                    setTotalTime =
-                        Set data
-                            |> getEssentials options.exerciseDuration
-                            |> Tuple.second
-                            |> List.map Tuple.second
-                            -- adding in break durations
-                            |> List.intersperse options.breakDuration
-                            |> List.foldl Duration.add (Duration.init 0)
-                  in
-                  Element.column
+                , Element.column
                     [ Element.width Element.fill
                     , Element.spacing 8
                     ]
@@ -211,7 +231,11 @@ view options (Set data) =
                           Font.light
                         , Element.spacing 2
                         ]
-                        [ setTotalTime
+                        [ getTimeWithoutRepeats
+                            { exerciseDuration = options.exerciseDuration
+                            , breakDuration = options.breakDuration
+                            }
+                            (Set data)
                             |> Duration.viewFancy
                             |> Element.el
                                 [ Font.color Colours.sunflower ]
@@ -241,11 +265,15 @@ view options (Set data) =
                             , Element.spacing 2
                             ]
                             [ Element.text "Total time: "
-                            , Duration.add (Duration.times setTotalTime data.repeat) (Duration.times options.breakDuration (data.repeat - 1))
+                            , totalTime
+                                { exerciseDuration = options.exerciseDuration
+                                , breakDuration = options.breakDuration
+                                }
+                                (Set data)
                                 |> Duration.viewFancy
                                 |> Element.el
                                     [ Font.color Colours.sunflower ]
-                            , Element.text ", including "
+                            , Element.text ", with "
                             , data.repeat
                                 - 1
                                 |> String.fromInt

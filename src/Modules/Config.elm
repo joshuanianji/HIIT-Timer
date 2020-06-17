@@ -2,6 +2,7 @@ module Modules.Config exposing (Config, Msg, encode, getData, init, update, view
 
 import Colours
 import Data.Config
+import Data.Duration as Duration exposing (Duration)
 import Dict
 import Element exposing (Element)
 import Element.Background as Background
@@ -18,11 +19,6 @@ import Util
 
 type Config
     = Config Data.Config.Data
-
-
-getData : Config -> Data.Config.Data
-getData (Config data) =
-    data
 
 
 
@@ -52,9 +48,36 @@ init localStorageValue =
     Config { actualData | error = mErr }
 
 
+
+-- helpers
+
+
 encode : Config -> Json.Encode.Value
 encode (Config data) =
     Data.Config.encode data
+
+
+getData : Config -> Data.Config.Data
+getData (Config data) =
+    data
+
+
+
+-- internal helpers
+
+
+totalTime : Data.Config.Data -> Duration
+totalTime data =
+    Dict.toList data.set
+        |> List.map Tuple.second
+        |> List.map
+            (Set.totalTime
+                { exerciseDuration = TimeInput.getDuration data.exerciseInput
+                , breakDuration = TimeInput.getDuration data.breakInput
+                }
+            )
+        |> List.intersperse (TimeInput.getDuration data.setBreakInput)
+        |> List.foldl Duration.add (Duration.init 0)
 
 
 
@@ -71,14 +94,20 @@ view (Config data) =
         , Element.spacing 48
         ]
         [ Util.viewIcon
-            { icon = Icon.sliders
+            { icon = Icon.settings
             , color = Colours.sky
             , size = 50
             , msg = Nothing
             }
-            |> Element.el
-                [ Element.centerX
-                ]
+            |> Element.el [ Element.centerX ]
+
+        -- , Element.paragraph
+        --     [ Font.color Colours.sky
+        --     , Font.center
+        --     , Font.size 50
+        --     , Element.width Element.fill
+        --     ]
+        --     [ Element.text "Configurations" ]
         , data.error
             |> Maybe.map Element.text
             |> Maybe.withDefault Element.none
@@ -157,7 +186,33 @@ view (Config data) =
             [ Element.width Element.fill
             , Element.spacing 18
             ]
-            [ Dict.toList
+            [ -- total time
+              Element.row
+                [ Element.spacing 2
+                , Element.centerX
+                , Font.light
+                ]
+                [ Element.text "Total time: "
+                , totalTime data
+                    |> Duration.viewFancy
+                    |> Element.el
+                        [ Font.color Colours.sunflower ]
+                , Element.text ", with "
+                , Dict.size data.set
+                    - 1
+                    |> String.fromInt
+                    |> Element.text
+                    |> Element.el [ Font.color Colours.sunflower ]
+                , Element.el [ Font.color Colours.sunflower ] <|
+                    Element.text
+                        (if Dict.size data.set == 2 then
+                            " break."
+
+                         else
+                            " breaks."
+                        )
+                ]
+            , Dict.toList
                 data.set
                 |> List.map
                     (\( _, set ) ->

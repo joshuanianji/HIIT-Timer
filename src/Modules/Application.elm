@@ -57,9 +57,15 @@ view (Application data) =
             , size = 50
             , msg = Nothing
             }
-            |> Element.el
-                [ Element.centerX ]
+            |> Element.el [ Element.centerX ]
 
+        -- , Element.paragraph
+        --     [ Font.color Colours.sunset
+        --     , Font.center
+        --     , Font.size 50
+        --     , Element.width Element.fill
+        --     ]
+        --     [ Element.text "Timer" ]
         -- the main view
         , case data.state of
             Data.Starting blocks ->
@@ -76,6 +82,20 @@ view (Application data) =
                             ]
                         <|
                             Element.text "Ready?"
+                    , Element.below <|
+                        Element.paragraph
+                            [ Element.moveDown 75
+                            , Element.centerX
+                            , Font.color Colours.sunset
+                            , Font.size 20
+                            , Font.center
+                            , Font.light
+                            ]
+                            [ Element.el [ Font.bold ] <| Element.text "Note:"
+                            , Element.text " if you press play, you "
+                            , Element.el [ Font.bold ] <| Element.text "cannot"
+                            , Element.text " go back to the settings page until you are done the workout!"
+                            ]
                     ]
                 <|
                     (Element.el
