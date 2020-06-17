@@ -160,16 +160,24 @@ application model =
     Element.column
         [ Element.width Element.fill
         , Element.height Element.fill
+        , Element.inFront <|
+            if Application.exercising model.application then
+                Element.none
+
+            else
+                Util.viewIcon
+                    { icon = Icon.settings
+                    , color = Colours.sky
+                    , size = 50
+                    , msg = Just ToSettings
+                    }
+                    |> Element.el
+                        [ Element.centerX
+                        , Element.alignBottom
+                        ]
         ]
         [ Application.view model.application
             |> Element.map ApplicationMsg
-        , Util.viewIcon
-            { icon = Icon.settings
-            , color = Colours.sky
-            , size = 50
-            , msg = Just ToSettings
-            }
-            |> Element.el [ Element.centerX ]
         ]
 
 
