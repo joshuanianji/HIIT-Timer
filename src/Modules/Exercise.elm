@@ -1,5 +1,7 @@
 module Modules.Exercise exposing (Exercise, breakView, essentials, fromData, getData, init, updateName, view)
 
+-- an exercise segment
+
 import Colours
 import Data.Duration as Duration exposing (Duration)
 import Element exposing (Element)

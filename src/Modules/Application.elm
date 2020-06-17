@@ -27,7 +27,7 @@ init =
 
 
 
--- Main.elm uses this to guess whether or not to show the thing at the bottom
+-- Main.elm uses this to know whether or not they need to show the settings page at the bottom
 
 
 exercising : Application -> Bool
