@@ -100,14 +100,6 @@ view (Config data) =
             , msg = Nothing
             }
             |> Element.el [ Element.centerX ]
-
-        -- , Element.paragraph
-        --     [ Font.color Colours.sky
-        --     , Font.center
-        --     , Font.size 50
-        --     , Element.width Element.fill
-        --     ]
-        --     [ Element.text "Configurations" ]
         , data.error
             |> Maybe.map Element.text
             |> Maybe.withDefault Element.none
@@ -117,67 +109,124 @@ view (Config data) =
             [ Element.width Element.fill
             , Element.spacing 8
             ]
-            [ data.exerciseInput
-                |> TimeInput.view
-                    { updateInput = UpdateInput Exercise
-                    , updateFocus = UpdateFocus Exercise
-                    , displayText = Just "Exercise Duration:"
-                    }
-            , data.breakInput
-                |> TimeInput.view
-                    { updateInput = UpdateInput Break
-                    , updateFocus = UpdateFocus Break
-                    , displayText = Just "Break Between Exercises:"
-                    }
-            , data.setBreakInput
-                |> TimeInput.view
-                    { updateInput = UpdateInput SetBreak
-                    , updateFocus = UpdateFocus SetBreak
-                    , displayText = Just "Break Between Sets:"
-                    }
-
-            -- countdown
-            , Element.row
-                [ Element.spacing 8
-                , Element.centerX
+            [ Element.column
+                [ Element.centerX
+                , Element.spacing 64
                 ]
-                [ Input.checkbox
-                    [ Font.light
-                    , Element.padding 4
+                [ Element.el
+                    [ Element.onRight <|
+                        Element.el
+                            [ Element.centerY ]
+                        <|
+                            TimeInput.view
+                                { updateInput = UpdateInput Exercise
+                                , updateFocus = UpdateFocus Exercise
+                                , displayText = Nothing
+                                }
+                                data.exerciseInput
+                    , Element.text "Exercise Duration:"
+                        |> Element.el [ Element.centerY ]
+                        |> Element.el
+                            [ Font.light
+                            , Element.height (Element.px 50)
+                            , Element.centerY
+                            ]
+                        |> Element.onLeft
+                    , Element.centerX
                     ]
-                    { onChange = ToggleCountdown
-                    , icon =
-                        \on ->
-                            if on then
-                                Util.viewIcon
-                                    { icon = Icon.checkSquare
-                                    , color = Colours.grass
-                                    , size = 30
-                                    , msg = Nothing
-                                    }
-
-                            else
-                                Util.viewIcon
-                                    { icon = Icon.xSquare
-                                    , color = Colours.sunset
-                                    , size = 30
-                                    , msg = Nothing
-                                    }
-                    , checked = data.countdown
-                    , label = Input.labelLeft [ Element.padding 8, Element.centerY ] <| Element.text "Countdown:"
-                    }
-                    |> Element.el
-                        [ Element.centerX ]
-                , if data.countdown then
-                    data.countdownInput
-                        |> TimeInput.view
-                            { updateInput = UpdateInput Countdown
-                            , updateFocus = UpdateFocus Countdown
-                            , displayText = Nothing
-                            }
-
-                  else
                     Element.none
+                , Element.el
+                    [ Element.onRight <|
+                        Element.el
+                            [ Element.centerY ]
+                        <|
+                            TimeInput.view
+                                { updateInput = UpdateInput Break
+                                , updateFocus = UpdateFocus Break
+                                , displayText = Nothing
+                                }
+                                data.breakInput
+                    , Element.text "Break Between Exercises:"
+                        |> Element.el [ Element.centerY ]
+                        |> Element.el
+                            [ Font.light
+                            , Element.height (Element.px 50)
+                            , Element.centerY
+                            ]
+                        |> Element.onLeft
+                    , Element.centerX
+                    ]
+                    Element.none
+                , Element.el
+                    [ Element.onRight <|
+                        Element.el
+                            [ Element.centerY ]
+                        <|
+                            TimeInput.view
+                                { updateInput = UpdateInput SetBreak
+                                , updateFocus = UpdateFocus SetBreak
+                                , displayText = Nothing
+                                }
+                                data.setBreakInput
+                    , Element.text "Break Between Sets:"
+                        |> Element.el [ Element.centerY ]
+                        |> Element.el
+                            [ Font.light
+                            , Element.height (Element.px 50)
+                            , Element.centerY
+                            ]
+                        |> Element.onLeft
+                    , Element.centerX
+                    ]
+                    Element.none
+
+                -- countdown
+                , Element.row
+                    [ Element.spacing 8
+                    , Element.centerX
+                    ]
+                    [ Input.checkbox
+                        [ Font.light
+                        , Element.padding 4
+                        ]
+                        { onChange = ToggleCountdown
+                        , icon =
+                            \on ->
+                                if on then
+                                    Util.viewIcon
+                                        { icon = Icon.checkSquare
+                                        , color = Colours.grass
+                                        , size = 30
+                                        , msg = Nothing
+                                        }
+
+                                else
+                                    Util.viewIcon
+                                        { icon = Icon.xSquare
+                                        , color = Colours.sunset
+                                        , size = 30
+                                        , msg = Nothing
+                                        }
+                        , checked = data.countdown
+                        , label = Input.labelLeft [ Element.padding 8, Element.centerY ] <| Element.text "Countdown:"
+                        }
+                        |> Element.el
+                            [ Element.centerX ]
+                    , if data.countdown then
+                        data.countdownInput
+                            |> TimeInput.view
+                                { updateInput = UpdateInput Countdown
+                                , updateFocus = UpdateFocus Countdown
+                                , displayText = Nothing
+                                }
+
+                      else
+                        Element.el
+                            [ Element.width <| Element.px 188
+                            , Element.padding 4
+                            ]
+                            Element.none
+                    ]
                 ]
             ]
 
