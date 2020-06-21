@@ -258,6 +258,7 @@ view (Config data) =
                             , onDeleteExercise = DeleteElement
                             , onDelete = DeleteSet
                             , onUpdateRepeat = NewSetRepeat
+                            , onCopy = CopySet
                             , toggleExpand = ToggleSetExpand
                             , updateName = UpdateSetName
                             , updateExerciseName = UpdateExerciseName
@@ -313,6 +314,7 @@ type Msg
     | NewSetRepeat Int Int
     | DeleteSet Int
     | AddSet
+    | CopySet Int
     | ToggleSetExpand Int
     | UpdateSetName Int String
     | UpdateExerciseName Int Int String
@@ -392,6 +394,32 @@ update msg (Config data) =
                     | sets = Dict.insert newN (Set.init newN) data.sets
                     , setCounter = newN
                 }
+
+        CopySet setPos ->
+            case Dict.get setPos data.sets of
+                Nothing ->
+                    Config data
+
+                Just setToCopy ->
+                    let
+                        -- creating a new dict, shifting the keys of the element to make room for the duplicated element
+                        newSets =
+                            Dict.toList data.sets
+                                |> List.map
+                                    (\( n, set ) ->
+                                        if n > setPos then
+                                            ( n + 1, set )
+
+                                        else
+                                            ( n, set )
+                                    )
+                                |> Dict.fromList
+                    in
+                    Config
+                        { data
+                            | sets = Dict.insert (setPos + 1) (Set.updatePosition (setPos + 1) setToCopy) newSets
+                            , setCounter = Dict.size data.sets + 1
+                        }
 
         ToggleSetExpand setPos ->
             Config { data | sets = Dict.update setPos (Maybe.map Set.toggleExpand) data.sets }

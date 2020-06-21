@@ -72,6 +72,9 @@ type alias Options msg =
     -- delete the entire set
     , onDelete : Int -> msg
 
+    -- copies the set and places the copy right below it
+    , onCopy : Int -> msg
+
     -- updates how may times the set will repeat
     -- first is the set position
     , onUpdateRepeat : Int -> Int -> msg
@@ -342,17 +345,17 @@ view options (Set data) =
                     }
                     |> Util.withTooltip
                         { position = Util.Left
-                        , content = "Delete Item"
+                        , content = "Delete Set"
                         }
                 , Util.viewIcon
                     { icon = Icon.copy
                     , color = Colours.sky
                     , size = 25
-                    , msg = Nothing
+                    , msg = Just <| options.onCopy data.position
                     }
                     |> Util.withTooltip
                         { position = Util.Left
-                        , content = "Duplicate Item"
+                        , content = "Duplicate Set"
                         }
                 ]
             ]
