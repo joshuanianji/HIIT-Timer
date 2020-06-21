@@ -1,4 +1,4 @@
-port module Ports exposing (playTada, playWhistle, storeConfig, storeConfigSuccess)
+port module Ports exposing (playTada, playTick, playWhistle, storeConfig, storeConfigSuccess)
 
 import Json.Encode
 
@@ -13,3 +13,6 @@ port playWhistle : () -> Cmd msg
 
 
 port playTada : () -> Cmd msg
+
+
+port playTick : () -> Cmd msg

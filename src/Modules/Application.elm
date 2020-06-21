@@ -7,6 +7,7 @@ import Element exposing (Element)
 import Element.Background as Background
 import Element.Font as Font
 import FeatherIcons as Icon
+import Keyboard exposing (Key)
 import List.Nonempty exposing (Nonempty(..))
 import Ports
 import Time
@@ -18,12 +19,12 @@ import Util
 
 
 type Application
-    = Application Data
+    = Application (List Key) Data
 
 
 init : Data.Config.Data -> Application
 init =
-    Data.fromConfig >> Application
+    Data.fromConfig >> Application []
 
 
 
@@ -31,7 +32,7 @@ init =
 
 
 exercising : Application -> Bool
-exercising (Application data) =
+exercising (Application _ data) =
     case data.state of
         Data.InProgress _ ->
             True
@@ -45,7 +46,7 @@ exercising (Application data) =
 
 
 view : Application -> Element Msg
-view (Application data) =
+view (Application _ data) =
     Element.column
         [ Element.width Element.fill
         , Element.height Element.fill
@@ -59,13 +60,6 @@ view (Application data) =
             }
             |> Element.el [ Element.centerX ]
 
-        -- , Element.paragraph
-        --     [ Font.color Colours.sunset
-        --     , Font.center
-        --     , Font.size 50
-        --     , Element.width Element.fill
-        --     ]
-        --     [ Element.text "Timer" ]
         -- the main view
         , case data.state of
             Data.Starting blocks ->
@@ -94,7 +88,7 @@ view (Application data) =
                             [ Element.el [ Font.bold ] <| Element.text "Note:"
                             , Element.text " if you press play, you "
                             , Element.el [ Font.bold ] <| Element.text "cannot"
-                            , Element.text " go back to the settings page until you are done the workout!"
+                            , Element.text " go back to the settings page without resetting your workout!"
                             ]
                     ]
                 <|
@@ -128,8 +122,7 @@ view (Application data) =
                         Element.el
                             [ Element.centerX
                             , Font.color color
-                            , Font.light
-                            , Font.size 100
+                            , Font.size 125
                             ]
                         <|
                             Element.text <|
@@ -158,8 +151,15 @@ view (Application data) =
                                 , theme = Colours.sky
                                 }
 
-                            Data.Break secsLeft total ->
-                                { upperElem = bigFont 32 Colours.grass "Break"
+                            Data.ExerciseBreak secsLeft total ->
+                                { upperElem = bigFont 32 Colours.grass "Break Between Exercise"
+                                , timerText = timerText secsLeft Colours.grass
+                                , timerBar = timerBar secsLeft total Colours.grass
+                                , theme = Colours.grass
+                                }
+
+                            Data.SetBreak secsLeft total ->
+                                { upperElem = bigFont 32 Colours.grass "Break Between Sets"
                                 , timerText = timerText secsLeft Colours.grass
                                 , timerBar = timerBar secsLeft total Colours.grass
                                 , theme = Colours.grass
@@ -224,7 +224,7 @@ view (Application data) =
 
             Data.Finished ->
                 Element.column
-                    [ Element.width <| Element.fillPortion 5
+                    [ Element.width Element.fill
                     , Element.centerY
                     , Element.spacing 32
                     ]
@@ -248,7 +248,43 @@ view (Application data) =
                         , Font.center
                         , Font.light
                         ]
-                        [ Element.text "Congradulations! You finished!" ]
+                        [ Element.text "Congratulations! You finished!" ]
+                    ]
+
+            Data.NeverStarted ->
+                Element.column
+                    [ Element.width Element.fill
+                    , Element.centerY
+                    , Element.spacing 32
+                    ]
+                    [ Element.image
+                        [ Element.width (Element.px 125)
+                        , Element.centerX
+                        ]
+                        { src = "src/assets/img/smh.png"
+                        , description = "Sokka is disappointed in your workout"
+                        }
+                    , Element.paragraph
+                        [ Font.color Colours.sunset
+                        , Font.center
+                        , Font.light
+                        , Font.size 50
+                        ]
+                        [ Element.text "Disappointed." ]
+                    , Element.textColumn
+                        [ Element.centerX
+                        , Element.spacing 4
+                        , Font.light
+                        , Font.center
+                        , Font.color Colours.sunset
+                        ]
+                        [ Element.paragraph
+                            []
+                            [ Element.text "You didn't put anything in your workout!" ]
+                        , Element.paragraph
+                            []
+                            [ Element.text "Go to the settings and try again." ]
+                        ]
                     ]
         ]
 
@@ -261,13 +297,14 @@ type Msg
     = StartExercise (Nonempty Data.TimeBlock)
     | NextSecond
     | TogglePlay
+    | KeyMsg Keyboard.Msg -- so we can react upon the space key press
 
 
 update : Msg -> Application -> ( Application, Cmd Msg )
-update msg (Application data) =
+update msg (Application keys data) =
     case msg of
         StartExercise blocks ->
-            ( Application
+            ( Application keys
                 { data
                     | state = Data.InProgress blocks
                     , playing = True
@@ -283,20 +320,45 @@ update msg (Application data) =
                             case tl of
                                 -- no more exercises
                                 [] ->
-                                    ( Application { data | state = Data.Finished }, Ports.playTada () )
+                                    ( Application keys { data | state = Data.Finished }, Ports.playTada () )
 
                                 x :: xs ->
-                                    ( Application { data | state = Data.InProgress <| Nonempty x xs }, Ports.playWhistle () )
+                                    ( Application keys { data | state = Data.InProgress <| Nonempty x xs }, Ports.playWhistle () )
 
                         Just newBlock ->
-                            ( Application { data | state = Data.InProgress <| Nonempty newBlock tl }, Cmd.none )
+                            let
+                                cmd =
+                                    if Data.timeLeft newBlock <= 3 then
+                                        Ports.playTick ()
+
+                                    else
+                                        Cmd.none
+                            in
+                            ( Application keys { data | state = Data.InProgress <| Nonempty newBlock tl }, cmd )
 
                 _ ->
                     -- ignore
-                    ( Application data, Cmd.none )
+                    ( Application keys data, Cmd.none )
 
         TogglePlay ->
-            ( Application { data | playing = not data.playing }, Ports.playWhistle () )
+            ( Application keys { data | playing = not data.playing }
+            , if data.playing then
+                Cmd.none
+
+              else
+                Ports.playWhistle ()
+            )
+
+        KeyMsg keyMsg ->
+            let
+                newKeys =
+                    Keyboard.update keyMsg keys
+            in
+            if newKeys == [ Keyboard.Spacebar ] then
+                update TogglePlay (Application newKeys data)
+
+            else
+                ( Application [] data, Cmd.none )
 
 
 
@@ -304,14 +366,21 @@ update msg (Application data) =
 
 
 subscriptions : Application -> Sub Msg
-subscriptions (Application data) =
-    case data.state of
-        Data.InProgress _ ->
-            if data.playing then
-                Time.every 1000 (always NextSecond)
+subscriptions (Application _ data) =
+    let
+        tickSub =
+            case data.state of
+                Data.InProgress _ ->
+                    if data.playing then
+                        Time.every 1000 (always NextSecond)
 
-            else
-                Sub.none
+                    else
+                        Sub.none
 
-        _ ->
-            Sub.none
+                _ ->
+                    Sub.none
+    in
+    Sub.batch
+        [ Sub.map KeyMsg Keyboard.subscriptions
+        , tickSub
+        ]

@@ -1,4 +1,4 @@
-module Data.Application exposing (AppState(..), Data, TimeBlock(..), decreaseTimeBlock, fromConfig)
+module Data.Application exposing (AppState(..), Data, TimeBlock(..), decreaseTimeBlock, fromConfig, timeLeft)
 
 import Data.Config as Config
 import Data.Duration as Duration
@@ -17,11 +17,13 @@ type alias Data =
 type AppState
     = Starting (Nonempty TimeBlock) -- the exercises to hold on to lol
     | InProgress (Nonempty TimeBlock)
+    | NeverStarted
     | Finished
 
 
 type TimeBlock
-    = Break Int Int
+    = ExerciseBreak Int Int
+    | SetBreak Int Int
     | CountDown Int Int
     | Exercise
         { setName : String
@@ -31,6 +33,22 @@ type TimeBlock
         }
 
 
+timeLeft : TimeBlock -> Int
+timeLeft block =
+    case block of
+        ExerciseBreak remaining _ ->
+            remaining
+
+        SetBreak remaining _ ->
+            remaining
+
+        CountDown remaining _ ->
+            remaining
+
+        Exercise data ->
+            data.secsLeft
+
+
 
 -- if the timeblock ends we return Nothing
 
@@ -38,12 +56,19 @@ type TimeBlock
 decreaseTimeBlock : TimeBlock -> Maybe TimeBlock
 decreaseTimeBlock tb =
     case tb of
-        Break curr total ->
+        ExerciseBreak curr total ->
             if curr <= 1 then
                 Nothing
 
             else
-                Just <| Break (curr - 1) total
+                Just <| ExerciseBreak (curr - 1) total
+
+        SetBreak curr total ->
+            if curr <= 1 then
+                Nothing
+
+            else
+                Just <| SetBreak (curr - 1) total
 
         CountDown curr total ->
             if curr <= 1 then
@@ -77,36 +102,36 @@ fromConfig configData =
             Duration.toSeconds <| TimeInput.getDuration configData.countdownInput
 
         exercises =
-            configData.set
-                |> Dict.map (\_ -> Set.getEssentials (TimeInput.getDuration configData.exerciseInput))
+            configData.sets
                 |> Dict.toList
                 |> List.map Tuple.second
-                |> List.filterMap
-                    (\( setName, exerciseList ) ->
-                        case exerciseList of
-                            [] ->
-                                Nothing
+                |> List.map
+                    (\set ->
+                        Set.getEssentials (TimeInput.getDuration configData.exerciseInput) set
+                            |> (\setData ->
+                                    case setData.exercises of
+                                        [] ->
+                                            []
 
-                            x :: xs ->
-                                Nonempty x xs
-                                    |> List.Nonempty.map
-                                        (\( name, duration ) ->
-                                            Exercise
-                                                { setName = setName
-                                                , name = name
-                                                , duration = Duration.toSeconds duration
-                                                , secsLeft = Duration.toSeconds duration
-                                                }
-                                        )
-                                    |> intersperseNonempty (Break breakSecs breakSecs)
-                                    |> Just
+                                        x :: xs ->
+                                            Nonempty x xs
+                                                |> List.Nonempty.map
+                                                    (\( exerciseName, exerciseDuration ) ->
+                                                        Exercise
+                                                            { setName = setData.name
+                                                            , name = exerciseName
+                                                            , duration = Duration.toSeconds exerciseDuration
+                                                            , secsLeft = Duration.toSeconds exerciseDuration
+                                                            }
+                                                    )
+                                                |> intersperseNonempty (ExerciseBreak breakSecs breakSecs)
+                                                |> List.repeat setData.repeats
+                               )
                     )
+                -- at this point we have a List (List (Nonempty TimeBlock))
+                |> List.concat
+                |> List.intersperse (List.Nonempty.fromElement <| SetBreak setBreakSecs setBreakSecs)
                 |> List.Nonempty.fromList
-                |> Maybe.map
-                    (Break setBreakSecs setBreakSecs
-                        |> List.Nonempty.fromElement
-                        |> intersperseNonempty
-                    )
                 |> Maybe.map List.Nonempty.concat
 
         state =
@@ -120,9 +145,9 @@ fromConfig configData =
                     else
                         Starting blocks
 
-                -- no elements
+                -- no elements - never started the workout smh
                 Nothing ->
-                    Finished
+                    NeverStarted
     in
     { playing = False
     , state = state

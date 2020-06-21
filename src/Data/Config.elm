@@ -1,7 +1,14 @@
-module Data.Config exposing (Data, decodeLocalStorage, default, encode, fromLocalStorage)
+module Data.Config exposing
+    ( Data
+    , decodeLocalStorage
+    , default
+    , encode
+    , fromLocalStorage
+    , sanitizeSets
+    )
 
 -- the data the Config module stores (accessible to the App data as well)
--- helpful to put JSON decode and encode stuff without clogging up the Modules.Config.elm file
+-- helpful to put JSON decode and encode stuff without clogging up the Modules.Config.elm file as well as other helper functions
 
 import Data.Duration as Duration
 import Data.LocalStorageConfig as LocalStorageConfig
@@ -19,7 +26,7 @@ type alias Data =
     , setBreakInput : TimeInput
     , countdown : Bool
     , countdownInput : TimeInput
-    , set : Dict Int Set
+    , sets : Dict Int Set
 
     -- so we won't get duplicate set positions - the set counter NEVER decreases
     , setCounter : Int
@@ -62,7 +69,7 @@ fromLocalStorage lsConfig =
     , setBreakInput = TimeInput.init lsConfig.setBreakInput
     , countdown = lsConfig.countdown
     , countdownInput = TimeInput.init lsConfig.countdownInput
-    , set = Dict.map (always fromLocalStorageSet) lsConfig.set
+    , sets = Dict.map (always fromLocalStorageSet) lsConfig.sets
     , setCounter = lsConfig.setCounter
     , error = Nothing
     }
@@ -97,7 +104,7 @@ encode data =
     , setBreakInput = Duration.toSeconds <| TimeInput.getDuration data.setBreakInput
     , countdown = data.countdown
     , countdownInput = Duration.toSeconds <| TimeInput.getDuration data.countdownInput
-    , set = Dict.map fromSet data.set
+    , sets = Dict.map fromSet data.sets
     , setCounter = data.setCounter
     }
         |> LocalStorageConfig.encode
@@ -115,7 +122,19 @@ default =
     , setBreakInput = TimeInput.init 60
     , countdown = True
     , countdownInput = TimeInput.init 5
-    , set = setDict
+    , sets = setDict
     , setCounter = 1
     , error = Nothing
+    }
+
+
+sanitizeSets : Data -> Data
+sanitizeSets data =
+    { data
+        | sets =
+            Dict.toList data.sets
+                |> List.indexedMap
+                    (\n ( _, e ) -> ( n, Set.updatePosition n e ))
+                |> Dict.fromList
+        , setCounter = Dict.size data.sets
     }

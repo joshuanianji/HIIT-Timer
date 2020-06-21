@@ -1,7 +1,7 @@
 module Modules.Config exposing (Config, Msg, encode, getData, init, update, view)
 
 import Colours
-import Data.Config
+import Data.Config as Data
 import Data.Duration as Duration exposing (Duration)
 import Dict
 import Element exposing (Element)
@@ -18,7 +18,7 @@ import Util
 
 
 type Config
-    = Config Data.Config.Data
+    = Config Data.Data
 
 
 
@@ -29,21 +29,21 @@ init : Json.Encode.Value -> Config
 init localStorageValue =
     let
         decodeLocalStorageAttempt =
-            Data.Config.decodeLocalStorage localStorageValue
+            Data.decodeLocalStorage localStorageValue
 
         ( actualData, mErr ) =
             case decodeLocalStorageAttempt of
                 -- there was no config stored in the first place
                 Ok Nothing ->
-                    ( Data.Config.default, Nothing )
+                    ( Data.default, Nothing )
 
                 -- success
                 Ok (Just config) ->
-                    ( Data.Config.fromLocalStorage config, Nothing )
+                    ( Data.fromLocalStorage config, Nothing )
 
                 -- failure to decode
                 Err jsonErr ->
-                    ( Data.Config.default, Just <| Json.Decode.errorToString jsonErr )
+                    ( Data.default, Just <| Json.Decode.errorToString jsonErr )
     in
     Config { actualData | error = mErr }
 
@@ -54,10 +54,10 @@ init localStorageValue =
 
 encode : Config -> Json.Encode.Value
 encode (Config data) =
-    Data.Config.encode data
+    Data.encode data
 
 
-getData : Config -> Data.Config.Data
+getData : Config -> Data.Data
 getData (Config data) =
     data
 
@@ -66,9 +66,9 @@ getData (Config data) =
 -- internal helpers
 
 
-totalTime : Data.Config.Data -> Duration
+totalTime : Data.Data -> Duration
 totalTime data =
-    Dict.toList data.set
+    Dict.toList data.sets
         |> List.map Tuple.second
         |> List.map
             (Set.totalTime
@@ -246,23 +246,9 @@ view (Config data) =
                     |> Duration.viewFancy
                     |> Element.el
                         [ Font.color Colours.sunflower ]
-                , Element.text ", with "
-                , Dict.size data.set
-                    - 1
-                    |> String.fromInt
-                    |> Element.text
-                    |> Element.el [ Font.color Colours.sunflower ]
-                , Element.el [ Font.color Colours.sunflower ] <|
-                    Element.text
-                        (if Dict.size data.set == 2 then
-                            " break."
-
-                         else
-                            " breaks."
-                        )
                 ]
             , Dict.toList
-                data.set
+                data.sets
                 |> List.map
                     (\( _, set ) ->
                         Set.view
@@ -366,35 +352,35 @@ update msg (Config data) =
         NewElement setPos ->
             Config
                 { data
-                    | set =
+                    | sets =
                         Dict.update
                             setPos
                             (Maybe.map Set.newExercise)
-                            data.set
+                            data.sets
                 }
 
         DeleteElement setPos elemPos ->
             Config
                 { data
-                    | set =
+                    | sets =
                         Dict.update
                             setPos
-                            (Maybe.map <| Set.deleteExercise elemPos)
-                            data.set
+                            (Maybe.map <| (Set.deleteExercise elemPos >> Set.sanitizeExercises))
+                            data.sets
                 }
 
         NewSetRepeat setPos repeat ->
             Config
                 { data
-                    | set =
+                    | sets =
                         Dict.update
                             setPos
                             (Maybe.map <| Set.updateRepeat repeat)
-                            data.set
+                            data.sets
                 }
 
         DeleteSet setPos ->
-            Config { data | set = Dict.remove setPos data.set }
+            Config <| Data.sanitizeSets { data | sets = Dict.remove setPos data.sets }
 
         AddSet ->
             let
@@ -403,15 +389,15 @@ update msg (Config data) =
             in
             Config
                 { data
-                    | set = Dict.insert newN (Set.init newN) data.set
+                    | sets = Dict.insert newN (Set.init newN) data.sets
                     , setCounter = newN
                 }
 
         ToggleSetExpand setPos ->
-            Config { data | set = Dict.update setPos (Maybe.map Set.toggleExpand) data.set }
+            Config { data | sets = Dict.update setPos (Maybe.map Set.toggleExpand) data.sets }
 
         UpdateSetName setPos newName ->
-            Config { data | set = Dict.update setPos (Maybe.map <| Set.updateName newName) data.set }
+            Config { data | sets = Dict.update setPos (Maybe.map <| Set.updateName newName) data.sets }
 
         UpdateExerciseName setPos exercisePos newName ->
-            Config { data | set = Dict.update setPos (Maybe.map <| Set.updateExerciseName exercisePos newName) data.set }
+            Config { data | sets = Dict.update setPos (Maybe.map <| Set.updateExerciseName exercisePos newName) data.sets }

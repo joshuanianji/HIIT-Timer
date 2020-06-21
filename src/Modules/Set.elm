@@ -1,15 +1,18 @@
 module Modules.Set exposing
     ( Set
+    , SetEssentials
     , deleteExercise
     , fromData
     , getData
     , getEssentials
     , init
     , newExercise
+    , sanitizeExercises
     , toggleExpand
     , totalTime
     , updateExerciseName
     , updateName
+    , updatePosition
     , updateRepeat
     , view
     )
@@ -106,17 +109,24 @@ init n =
 
 
 
--- helpers
--- to a list of exercise name and duration (used in application)
+---- HELPERS
+-- to a list of exercise name, repeats and duration (used in application)
 
 
-getEssentials : Duration -> Set -> ( String, List ( String, Duration ) )
+type alias SetEssentials =
+    { name : String
+    , repeats : Int
+    , exercises : List ( String, Duration )
+    }
+
+
+getEssentials : Duration -> Set -> SetEssentials
 getEssentials exerciseDuration (Set data) =
     data.exercises
         |> Dict.map (\_ -> Exercise.essentials exerciseDuration)
         |> Dict.toList
         |> List.map Tuple.second
-        |> (\l -> ( data.name, l ))
+        |> (\l -> SetEssentials data.name data.repeat l)
 
 
 
@@ -141,11 +151,38 @@ getTimeWithoutRepeats :
     -> Duration
 getTimeWithoutRepeats options set =
     getEssentials options.exerciseDuration set
-        |> Tuple.second
+        |> .exercises
         |> List.map Tuple.second
         -- adding in break durations
         |> List.intersperse options.breakDuration
         |> List.foldl Duration.add (Duration.init 0)
+
+
+
+-- to sanitize the exercises, we make the keys to the dictionary increasing in order again and change the exerciseCounter to the size of the dictionary. Note that this does not change the names in any way.
+-- sanitation is nice to make the counter not go up indefinitely lol.
+
+
+sanitizeExercises : Set -> Set
+sanitizeExercises (Set data) =
+    Set
+        { data
+            | exercises =
+                Dict.toList data.exercises
+                    |> List.indexedMap
+                        (\n ( _, e ) -> ( n, Exercise.updatePosition n e ))
+                    |> Dict.fromList
+            , exerciseCounter = Dict.size data.exercises
+        }
+
+
+
+-- for config to sanitize set dictionary
+
+
+updatePosition : Int -> Set -> Set
+updatePosition n (Set data) =
+    Set { data | position = n }
 
 
 
@@ -207,7 +244,7 @@ view options (Set data) =
                         { onChange =
                             String.filter Char.isDigit
                                 >> String.toInt
-                                >> Maybe.withDefault 1
+                                >> Maybe.withDefault 0
                                 >> options.onUpdateRepeat data.position
                         , text = String.fromInt data.repeat
                         , placeholder = Nothing
@@ -293,32 +330,30 @@ view options (Set data) =
 
             -- icons on the right
             , Element.column
-                [ Element.spacing 8 ]
+                [ Element.spacing 8
+                , Element.alignRight
+                , Element.centerY
+                ]
                 [ Util.viewIcon
                     { icon = Icon.trash
                     , color = Colours.sunset
                     , size = 25
                     , msg = Just <| options.onDelete data.position
                     }
-                    |> Element.el
-                        [ Element.alignRight
-                        , Element.centerY
-                        ]
+                    |> Util.withTooltip
+                        { position = Util.Left
+                        , content = "Delete Item"
+                        }
                 , Util.viewIcon
-                    { icon =
-                        if data.expanded then
-                            Icon.chevronUp
-
-                        else
-                            Icon.chevronDown
+                    { icon = Icon.copy
                     , color = Colours.sky
                     , size = 25
-                    , msg = Just <| options.toggleExpand data.position
+                    , msg = Nothing
                     }
-                    |> Element.el
-                        [ Element.alignRight
-                        , Element.centerY
-                        ]
+                    |> Util.withTooltip
+                        { position = Util.Left
+                        , content = "Duplicate Item"
+                        }
                 ]
             ]
 
@@ -364,6 +399,30 @@ view options (Set data) =
 
           else
             Element.none
+
+        -- expand toggle button
+        , Util.viewIcon
+            { icon =
+                if data.expanded then
+                    Icon.chevronUp
+
+                else
+                    Icon.chevronDown
+            , color = Colours.sunflower
+            , size = 25
+            , msg = Just <| options.toggleExpand data.position
+            }
+            |> Util.withTooltip
+                { position = Util.Top
+                , content =
+                    if data.expanded then
+                        "Collapse Set"
+
+                    else
+                        "Expand Set"
+                }
+            |> Element.el
+                [ Element.centerX ]
         ]
 
 

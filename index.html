@@ -25,6 +25,10 @@
             src: ['/src/assets/sounds/tada.mp3', '/src/assets/sounds/tada.wav']
         });
 
+        const tick = new Howl({
+            src: ['/src/assets/sounds/tick.mp3']
+        });
+
         var storedConfig = localStorage.getItem('config');
         console.log("Retrieved state: ", storedConfig);
 
@@ -52,6 +56,10 @@
 
         app.ports.playTada.subscribe(() => {
             tada.play()
+        });
+
+        app.ports.playTick.subscribe(() => {
+            tick.play()
         });
     </script>
 </body>

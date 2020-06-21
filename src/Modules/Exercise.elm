@@ -1,4 +1,14 @@
-module Modules.Exercise exposing (Exercise, breakView, essentials, fromData, getData, init, updateName, view)
+module Modules.Exercise exposing
+    ( Exercise
+    , breakView
+    , essentials
+    , fromData
+    , getData
+    , init
+    , updateName
+    , updatePosition
+    , view
+    )
 
 -- an exercise segment
 
@@ -56,6 +66,16 @@ init n =
 essentials : Duration -> Exercise -> ( String, Duration )
 essentials duration (Exercise data) =
     ( data.name, duration )
+
+
+
+-- ONLY CHANGE POSITION, NOT THE NAME.
+-- this is used when the Set wants to sanitize the elements
+
+
+updatePosition : Int -> Exercise -> Exercise
+updatePosition n (Exercise data) =
+    Exercise { data | position = n }
 
 
 

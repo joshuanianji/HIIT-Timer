@@ -27,7 +27,7 @@ type alias Data =
     , setBreakInput : Int
     , countdown : Bool
     , countdownInput : Int
-    , set : Dict Int Set
+    , sets : Dict Int Set
     , setCounter : Int
     }
 
@@ -64,7 +64,7 @@ encode data =
         , ( "setBreakInput", Encode.int data.setBreakInput )
         , ( "countdown", Encode.bool data.countdown )
         , ( "countdownInput", Encode.int data.countdownInput )
-        , ( "set", Encode.dict String.fromInt encodeSet data.set )
+        , ( "set", Encode.dict String.fromInt encodeSet data.sets )
         , ( "setCounter", Encode.int data.setCounter )
         ]
 
