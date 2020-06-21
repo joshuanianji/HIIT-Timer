@@ -233,7 +233,10 @@ update msg model =
             )
 
         ToSettings ->
-            ( { model | state = Settings }
+            ( { model
+                | state = Settings
+                , application = Application.endWorkout
+              }
             , Cmd.none
             )
 

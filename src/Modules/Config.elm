@@ -78,6 +78,13 @@ totalTime data =
             )
         |> List.intersperse (TimeInput.getDuration data.setBreakInput)
         |> List.foldl Duration.add (Duration.init 0)
+        |> Duration.add
+            (if data.countdown then
+                TimeInput.getDuration data.countdownInput
+
+             else
+                Duration.init 0
+            )
 
 
 

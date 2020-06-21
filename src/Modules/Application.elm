@@ -1,4 +1,4 @@
-module Modules.Application exposing (Application, Msg, exercising, init, subscriptions, update, view)
+module Modules.Application exposing (Application, Msg, endWorkout, exercising, init, subscriptions, update, view)
 
 import Colours
 import Data.Application as Data exposing (Data)
@@ -39,6 +39,20 @@ exercising (Application _ data) =
 
         _ ->
             False
+
+
+
+-- Main.elm also uses this to end the workout
+-- changing state so it won't keep ticking when we're on the settings page
+-- I just arbitratily put the state as Finished - honestly, anything that's not Data.InProgress will work
+
+
+endWorkout : Application
+endWorkout =
+    Application []
+        { playing = False
+        , state = Data.Finished
+        }
 
 
 
