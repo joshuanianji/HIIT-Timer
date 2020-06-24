@@ -62,7 +62,7 @@ init flags =
     ( { windowSize = flags.windowSize
       , state = Settings
       , config = config
-      , application = Application.init (Config.getData config)
+      , application = Application.init (Config.getData config) flags.smhSrc
       , showSavedCheck = False
       }
     , Cmd.none
@@ -227,7 +227,7 @@ update msg model =
         ToApplication ->
             ( { model
                 | state = Application
-                , application = Application.init (Config.getData model.config)
+                , application = Application.updateData (Config.getData model.config) model.application
               }
             , Cmd.none
             )
@@ -235,7 +235,7 @@ update msg model =
         ToSettings ->
             ( { model
                 | state = Settings
-                , application = Application.endWorkout
+                , application = Application.endWorkout model.application
               }
             , Cmd.none
             )

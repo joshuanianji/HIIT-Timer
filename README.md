@@ -9,4 +9,4 @@ You can see it in action [here](https://joshuaji.com/projects/hiit-timer/)
 
 ## Run It Yourself
 
-Make sure you have Elm and Elm-live installed. Once you `git clone` the repo, run `elm-live src/Main.elm --open -- --output=elm.js --debug` to open the development server with the cool debug feature.
+Make sure you have Elm and create-elm-app installed. Once you `git clone` the repo, run `elm-app start` to open the development server with the cool debug feature.

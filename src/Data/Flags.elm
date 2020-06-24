@@ -6,6 +6,7 @@ import Json.Encode
 type alias Flags =
     { windowSize : WindowSize
     , storedConfig : Json.Encode.Value
+    , smhSrc : String
     }
 
 

@@ -1,4 +1,4 @@
-module Modules.Application exposing (Application, Msg, endWorkout, exercising, init, subscriptions, update, view)
+module Modules.Application exposing (Application, Msg, endWorkout, exercising, init, subscriptions, update, updateData, view)
 
 import Colours
 import Data.Application as Data exposing (Data)
@@ -19,12 +19,40 @@ import Util
 
 
 type Application
-    = Application (List Key) Data
+    = Application Model Data
 
 
-init : Data.Config.Data -> Application
-init =
-    Data.fromConfig >> Application []
+
+-- other important data
+
+
+type alias Model =
+    { keys : List Key -- keys pressed down
+    , smhSrc : String
+    }
+
+
+
+-- should only be called once
+
+
+init : Data.Config.Data -> String -> Application
+init data imgSrc =
+    Data.fromConfig data
+        |> Application
+            { keys = []
+            , smhSrc = imgSrc
+            }
+
+
+
+-- every time the user switches to the application page
+
+
+updateData : Data.Config.Data -> Application -> Application
+updateData data (Application model _) =
+    Data.fromConfig data
+        |> Application model
 
 
 
@@ -47,9 +75,9 @@ exercising (Application _ data) =
 -- I just arbitratily put the state as Finished - honestly, anything that's not Data.InProgress will work
 
 
-endWorkout : Application
-endWorkout =
-    Application []
+endWorkout : Application -> Application
+endWorkout (Application model _) =
+    Application model
         { playing = False
         , state = Data.Finished
         }
@@ -60,7 +88,7 @@ endWorkout =
 
 
 view : Application -> Element Msg
-view (Application _ data) =
+view (Application model data) =
     Element.column
         [ Element.width Element.fill
         , Element.height Element.fill
@@ -275,7 +303,7 @@ view (Application _ data) =
                         [ Element.width (Element.px 125)
                         , Element.centerX
                         ]
-                        { src = "src/assets/img/smh.png"
+                        { src = model.smhSrc
                         , description = "Sokka is disappointed in your workout"
                         }
                     , Element.paragraph
@@ -315,10 +343,10 @@ type Msg
 
 
 update : Msg -> Application -> ( Application, Cmd Msg )
-update msg (Application keys data) =
+update msg (Application model data) =
     case msg of
         StartExercise blocks ->
-            ( Application keys
+            ( Application model
                 { data
                     | state = Data.InProgress blocks
                     , playing = True
@@ -334,10 +362,10 @@ update msg (Application keys data) =
                             case tl of
                                 -- no more exercises
                                 [] ->
-                                    ( Application keys { data | state = Data.Finished }, Ports.playTada () )
+                                    ( Application model { data | state = Data.Finished }, Ports.playTada () )
 
                                 x :: xs ->
-                                    ( Application keys { data | state = Data.InProgress <| Nonempty x xs }, Ports.playWhistle () )
+                                    ( Application model { data | state = Data.InProgress <| Nonempty x xs }, Ports.playWhistle () )
 
                         Just newBlock ->
                             let
@@ -348,14 +376,14 @@ update msg (Application keys data) =
                                     else
                                         Cmd.none
                             in
-                            ( Application keys { data | state = Data.InProgress <| Nonempty newBlock tl }, cmd )
+                            ( Application model { data | state = Data.InProgress <| Nonempty newBlock tl }, cmd )
 
                 _ ->
                     -- ignore
-                    ( Application keys data, Cmd.none )
+                    ( Application model data, Cmd.none )
 
         TogglePlay ->
-            ( Application keys { data | playing = not data.playing }
+            ( Application model { data | playing = not data.playing }
             , if data.playing then
                 Cmd.none
 
@@ -366,13 +394,16 @@ update msg (Application keys data) =
         KeyMsg keyMsg ->
             let
                 newKeys =
-                    Keyboard.update keyMsg keys
+                    Keyboard.update keyMsg model.keys
+
+                newModel =
+                    { model | keys = newKeys }
             in
             if newKeys == [ Keyboard.Spacebar ] then
-                update TogglePlay (Application newKeys data)
+                update TogglePlay (Application newModel data)
 
             else
-                ( Application [] data, Cmd.none )
+                ( Application model data, Cmd.none )
 
 
 
