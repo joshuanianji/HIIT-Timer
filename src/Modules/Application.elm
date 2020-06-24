@@ -1,4 +1,14 @@
-module Modules.Application exposing (Application, Msg, endWorkout, exercising, init, subscriptions, update, updateData, view)
+module Modules.Application exposing
+    ( Application
+    , Msg
+    , endWorkout
+    , exercising
+    , init
+    , subscriptions
+    , update
+    , updateData
+    , view
+    )
 
 import Colours
 import Data.Application as Data exposing (Data)
@@ -15,7 +25,7 @@ import Util
 
 
 
--- TYPE
+---- TYPE ----
 
 
 type Application
@@ -84,7 +94,7 @@ endWorkout (Application model _) =
 
 
 
--- VIEW
+---- VIEW ----
 
 
 view : Application -> Element Msg
@@ -332,7 +342,7 @@ view (Application model data) =
 
 
 
--- UPDATE
+---- UPDATE ----
 
 
 type Msg
@@ -407,7 +417,7 @@ update msg (Application model data) =
 
 
 
--- SUBSCRIPTIONS
+---- SUBSCRIPTIONS ----
 
 
 subscriptions : Application -> Sub Msg

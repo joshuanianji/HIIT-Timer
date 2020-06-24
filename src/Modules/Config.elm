@@ -1,4 +1,12 @@
-module Modules.Config exposing (Config, Msg, encode, getData, init, update, view)
+module Modules.Config exposing
+    ( Config
+    , Msg
+    , encode
+    , getData
+    , init
+    , update
+    , view
+    )
 
 import Colours
 import Data.Config as Data
@@ -15,6 +23,10 @@ import Modules.Exercise as Exercise
 import Modules.Set as Set
 import Modules.TimeInput as TimeInput
 import Util
+
+
+
+---- TYPE ----
 
 
 type Config
@@ -88,7 +100,7 @@ totalTime data =
 
 
 
--- VIEW
+---- VIEW ----
 
 
 view : Config -> Element Msg
@@ -302,15 +314,7 @@ view (Config data) =
 
 
 
--- UPDATE
--- either the exercise, break, countdown or setBreak
-
-
-type Input
-    = Exercise
-    | Break
-    | SetBreak
-    | Countdown
+---- UPDATE ----
 
 
 type Msg
@@ -326,6 +330,17 @@ type Msg
     | UpdateSetName Int String
     | UpdateExerciseName Int Int String
     | ToggleCountdown Bool
+
+
+
+-- helps me differentiate between the different focuses
+
+
+type Input
+    = Exercise
+    | Break
+    | SetBreak
+    | Countdown
 
 
 update : Msg -> Config -> Config

@@ -22,6 +22,10 @@ import FeatherIcons as Icon
 import Util
 
 
+
+---- TYPE ----
+
+
 type Exercise
     = Exercise Data
 
@@ -93,7 +97,7 @@ fromData =
 
 
 
--- VIEW
+---- VIEW ----
 
 
 view : Options msg -> Exercise -> Element msg
@@ -155,7 +159,7 @@ breakView duration =
 
 
 
--- UPDATE
+---- UPDATE HELPERS ----
 
 
 updateName : String -> Exercise -> Exercise

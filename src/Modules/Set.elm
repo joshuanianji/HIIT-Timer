@@ -32,6 +32,10 @@ import Modules.Exercise as Exercise exposing (Exercise)
 import Util
 
 
+
+---- TYPE ----
+
+
 type Set
     = Set Data
 
@@ -203,7 +207,7 @@ fromData =
 
 
 
--- VIEW
+---- VIEW ----
 
 
 view : Options msg -> Set -> Element msg
@@ -430,7 +434,7 @@ view options (Set data) =
 
 
 
--- UPDATE
+---- UPDATE HELPERS ----
 
 
 newExercise : Set -> Set

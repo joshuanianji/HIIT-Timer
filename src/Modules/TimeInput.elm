@@ -10,6 +10,10 @@ import Element.Input as Input
 import Util
 
 
+
+---- TYPE ----
+
+
 type TimeInput
     = TimeInput Data
 
@@ -63,7 +67,7 @@ getDuration (TimeInput data) =
 
 
 
--- VIEW
+---- VIEW ----
 
 
 view : Options msg -> TimeInput -> Element msg
@@ -139,7 +143,7 @@ view options (TimeInput data) =
 
 
 
--- UPDATE
+---- UPDATE HELPERS ----
 
 
 updateInput : TimeInput -> String -> TimeInput

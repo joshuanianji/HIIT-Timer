@@ -1,7 +1,13 @@
 module Data.Duration exposing (Duration, add, fromString, init, sanitize, times, toSeconds, toString, viewFancy)
 
+-- type and helper functions to represent durations
+
 import Element exposing (Element)
 import Element.Font as Font
+
+
+
+---- TYPE ----
 
 
 type alias Duration =
