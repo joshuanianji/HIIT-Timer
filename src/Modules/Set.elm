@@ -116,7 +116,7 @@ init n =
 
 
 
----- HELPERS
+---- HELPERS ----
 -- to a list of exercise name, repeats and duration (used in application)
 
 

@@ -26,7 +26,7 @@ import Util
 ---- TYPE ----
 
 
-
+type Exercise
     = Exercise Data
 
 
@@ -70,8 +70,6 @@ init n =
 essentials : Duration -> Exercise -> ( String, Duration )
 essentials duration (Exercise data) =
     ( data.name, duration )
-
-
 
 
 
@@ -157,6 +155,7 @@ breakView duration =
 updateName : String -> Exercise -> Exercise
 updateName newName (Exercise data) =
     Exercise { data | name = newName }
+
 
 
 -- ONLY CHANGE POSITION, NOT THE NAME.
