@@ -26,7 +26,7 @@ import Util
 ---- TYPE ----
 
 
-type Exercise
+
     = Exercise Data
 
 
@@ -72,14 +72,6 @@ essentials duration (Exercise data) =
     ( data.name, duration )
 
 
-
--- ONLY CHANGE POSITION, NOT THE NAME.
--- this is used when the Set wants to sanitize the elements
-
-
-updatePosition : Int -> Exercise -> Exercise
-updatePosition n (Exercise data) =
-    Exercise { data | position = n }
 
 
 
@@ -165,3 +157,12 @@ breakView duration =
 updateName : String -> Exercise -> Exercise
 updateName newName (Exercise data) =
     Exercise { data | name = newName }
+
+
+-- ONLY CHANGE POSITION, NOT THE NAME.
+-- this is used when the Set wants to sanitize the elements
+
+
+updatePosition : Int -> Exercise -> Exercise
+updatePosition n (Exercise data) =
+    Exercise { data | position = n }
