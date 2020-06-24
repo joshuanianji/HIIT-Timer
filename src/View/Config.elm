@@ -1,4 +1,4 @@
-module Modules.Config exposing
+module View.Config exposing
     ( Config
     , Msg
     , encode

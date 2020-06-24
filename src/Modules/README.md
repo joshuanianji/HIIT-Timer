@@ -1,3 +1,3 @@
 # Modules 
 
-Modules should be any file that has a complete model-view-update architecture.
+Modules are using data and putting a view function on them.

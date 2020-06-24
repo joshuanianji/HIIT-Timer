@@ -1,4 +1,4 @@
-module Modules.Application exposing
+module View.Application exposing
     ( Application
     , Msg
     , endWorkout

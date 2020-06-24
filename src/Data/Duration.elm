@@ -1,4 +1,14 @@
-module Data.Duration exposing (Duration, add, fromString, init, sanitize, times, toSeconds, toString, viewFancy)
+module Data.Duration exposing
+    ( Duration
+    , add
+    , fromString
+    , init
+    , sanitize
+    , times
+    , toSeconds
+    , toString
+    , viewFancy
+    )
 
 -- type and helper functions to represent durations
 

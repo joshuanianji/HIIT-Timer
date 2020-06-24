@@ -1,4 +1,11 @@
-module Data.Application exposing (AppState(..), Data, TimeBlock(..), decreaseTimeBlock, fromConfig, timeLeft)
+module Data.Application exposing
+    ( AppState(..)
+    , Data
+    , TimeBlock(..)
+    , decreaseTimeBlock
+    , fromConfig
+    , timeLeft
+    )
 
 import Data.Config as Config
 import Data.Duration as Duration

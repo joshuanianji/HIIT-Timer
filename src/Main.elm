@@ -7,12 +7,12 @@ import Element exposing (Element)
 import Element.Font as Font
 import FeatherIcons as Icon
 import Html exposing (Html)
-import Modules.Application as Application exposing (Application)
-import Modules.Config as Config exposing (Config)
 import Ports
 import Process
 import Task
 import Util
+import View.Application as Application exposing (Application)
+import View.Config as Config exposing (Config)
 
 
 
