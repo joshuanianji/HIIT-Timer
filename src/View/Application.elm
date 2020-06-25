@@ -388,7 +388,7 @@ update : Msg -> Application -> ( Application, Cmd Msg )
 update msg (Application model data) =
     case msg of
         NewWindowSize width height ->
-            ( Application model data, Cmd.none )
+            ( Application { model | device = Element.classifyDevice <| Flags.WindowSize width height } data, Cmd.none )
 
         StartExercise blocks ->
             ( Application model
