@@ -3,5 +3,7 @@
 elm-stuff/
 elm.js
 build/
+elmapp.config.js
 
+# other stuff 
 .DS_Store
