@@ -133,7 +133,6 @@ view options (TimeInput data) =
                         [ Duration.viewFancy data.duration ]
                 , Events.onFocus <| options.updateFocus True
                 , Events.onLoseFocus <| options.updateFocus False
-                , Util.unselectable
                 ]
                 { onChange = options.updateInput
                 , text = data.input

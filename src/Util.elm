@@ -2,7 +2,6 @@ module Util exposing
     ( Position(..)
     , isVerticalPhone
     , surround
-    , unselectable
     , viewIcon
     , withTooltip
     )
@@ -65,11 +64,6 @@ viewIcon data =
                     ++ similarAttrs
                 )
                 icon
-
-
-unselectable : Element.Attribute msg
-unselectable =
-    Element.htmlAttribute (Html.Attributes.class "noselect")
 
 
 
