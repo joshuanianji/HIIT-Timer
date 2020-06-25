@@ -205,7 +205,9 @@ view (Config model data) =
                             , label = Input.labelLeft [ Element.padding 8, Element.centerY ] <| Element.text "Countdown:"
                             }
                             |> Element.el
-                                [ Element.centerX ]
+                                [ Element.centerY
+                                , Element.centerX
+                                ]
 
                     countdownInput =
                         if data.countdown then
@@ -235,14 +237,15 @@ view (Config model data) =
                         ]
 
                   else
-                    -- orient sideways
-                    Element.row
-                        [ Element.spacing 8
+                    -- orient horizontally (center the space between label and input)
+                    Element.el
+                        [ Element.onRight <|
+                            Element.el [ Element.centerY ] countdownInput
+                        , Element.onLeft countdownLabel
                         , Element.centerX
+                        , Element.height (Element.px 64)
                         ]
-                        [ countdownLabel
-                        , countdownInput
-                        ]
+                        Element.none
                 ]
             ]
 
@@ -456,5 +459,5 @@ update msg (Config model data) =
 
 
 subscriptions : Config -> Sub Msg
-subscriptions (Config model data) =
+subscriptions _ =
     Browser.Events.onResize NewWindowSize

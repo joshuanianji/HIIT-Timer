@@ -86,7 +86,6 @@ view options (TimeInput data) =
                         , Element.padding 8
                         ]
                     )
-                |> Maybe.withDefault Element.none
 
         input =
             Input.text
@@ -145,20 +144,25 @@ view options (TimeInput data) =
         Element.column
             [ Element.centerX ]
             (List.map (Element.el [ Element.centerX ])
-                [ label
+                [ Maybe.withDefault Element.none label
                 , input
                 ]
             )
 
     else
-        Element.el
-            [ Element.onRight <|
-                Element.el [ Element.centerY ] input
-            , Element.onLeft label
-            , Element.centerX
-            , Element.height (Element.px 64)
-            ]
-            Element.none
+        case label of
+            Just l ->
+                Element.el
+                    [ Element.onRight <|
+                        Element.el [ Element.centerY ] input
+                    , Element.onLeft l
+                    , Element.centerX
+                    , Element.height (Element.px 64)
+                    ]
+                    Element.none
+
+            Nothing ->
+                input
 
 
 
