@@ -28,6 +28,7 @@ import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
 import FeatherIcons as Icon
+import Html.Attributes
 import Modules.Exercise as Exercise exposing (Exercise)
 import Util
 
@@ -251,7 +252,9 @@ view options (Set data) =
 
                 input =
                     Input.text
-                        [ Font.light ]
+                        [ Font.light
+                        , Element.htmlAttribute <| Html.Attributes.type_ "number"
+                        ]
                         { onChange =
                             String.filter Char.isDigit
                                 >> String.toInt
