@@ -417,7 +417,7 @@ view options (Set data) =
                     , copySetIcon
                         |> Util.withTooltip
                             { position = Util.Left
-                            , content = "Delete Set"
+                            , content = "Duplicate Set"
                             }
                     ]
                 ]

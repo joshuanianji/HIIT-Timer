@@ -4,11 +4,11 @@ import './assets/howler.core';
 import './assets/simptip.min.css';
 
 // images
-import smh from './assets/img/smh.png'
-import tadamp3 from './assets/sounds/tada.mp3'
-import tadawav from './assets/sounds/tada.wav'
-import tickmp3 from './assets/sounds/tick.mp3'
-import whistlemp3 from './assets/sounds/whistle.mp3'
+import smh from './assets/img/smh.png';
+import tadamp3File from './assets/sounds/tada.mp3';
+import tadawavFile from './assets/sounds/tada.wav';
+import tickFile from './assets/sounds/tick.mp3';
+import whistleFile from './assets/sounds/whistle.mp3';
 
 // other imports
 import { Elm } from './Main.elm';
@@ -19,17 +19,17 @@ import * as serviceWorker from './serviceWorker';
 
 const whistle = new Howl({
     volume: 0.8,
-    src: [whistlemp3]
+    src: [whistleFile]
 });
 
 const tada = new Howl({
     volume: 0.8,
-    src: [tadamp3, tadawav]
+    src: [tadamp3File, tadawavFile]
 });
 
 const tick = new Howl({
     volume: 1,
-    src: [tickmp3]
+    src: [tickFile]
 });
 
 var storedConfig = localStorage.getItem('config');
