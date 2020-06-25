@@ -10,9 +10,11 @@ module View.Application exposing
     , view
     )
 
+import Browser.Events
 import Colours
 import Data.Application as Data exposing (Data)
 import Data.Config
+import Data.Flags as Flags exposing (Flags)
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Font as Font
@@ -39,6 +41,7 @@ type Application
 type alias Model =
     { keys : List Key -- keys pressed down
     , smhSrc : String
+    , device : Element.Device
     }
 
 
@@ -46,12 +49,13 @@ type alias Model =
 -- should only be called once
 
 
-init : Data.Config.Data -> String -> Application
-init data imgSrc =
+init : Data.Config.Data -> Flags -> Application
+init data flags =
     Data.fromConfig data
         |> Application
             { keys = []
-            , smhSrc = imgSrc
+            , smhSrc = flags.smhSrc
+            , device = Element.classifyDevice flags.windowSize
             }
 
 
@@ -102,7 +106,6 @@ view (Application model data) =
     Element.column
         [ Element.width Element.fill
         , Element.height Element.fill
-        , Element.padding 32
         ]
         [ Util.viewIcon
             { icon = Icon.zap
@@ -115,47 +118,59 @@ view (Application model data) =
         -- the main view
         , case data.state of
             Data.Starting blocks ->
-                Element.el
+                -- I have to use Element.inFront to ensure that both the upper and lower blocks are the SAME height
+                Element.column
                     [ Element.width Element.fill
-                    , Element.centerY
-                    , Element.above <|
-                        Element.el
-                            [ Element.centerX
-                            , Element.moveUp 100
-                            , Font.size 50
-                            , Font.center
-                            , Font.color Colours.sunset
-                            ]
-                        <|
-                            Element.text "Ready?"
-                    , Element.below <|
-                        Element.paragraph
-                            [ Element.moveDown 75
-                            , Element.centerX
-                            , Font.color Colours.sunset
-                            , Font.size 20
-                            , Font.center
-                            , Font.light
-                            ]
-                            [ Element.el [ Font.bold ] <| Element.text "Note:"
-                            , Element.text " if you press play, you "
-                            , Element.el [ Font.bold ] <| Element.text "cannot"
-                            , Element.text " go back to the settings page without resetting your workout!"
-                            ]
+                    , Element.height Element.fill
                     ]
-                <|
-                    (Element.el
-                        [ Element.centerX
-                        , Element.padding 4
+                    [ Element.el
+                        [ Element.width Element.fill
+                        , Element.height Element.fill
+                        , Element.below <|
+                            Element.el
+                                [ Element.centerX
+                                , Element.moveUp 56
+                                , Element.padding 4
+                                ]
+                            <|
+                                Util.viewIcon
+                                    { icon = Icon.play
+                                    , color = Colours.sunset
+                                    , size = 75
+                                    , msg = Just <| StartExercise blocks
+                                    }
+                        , Element.inFront <|
+                            Element.paragraph
+                                [ Element.centerX
+                                , Element.centerY
+                                , Font.size 50
+                                , Font.center
+                                , Font.color Colours.sunset
+                                ]
+                                [ Element.text "Ready?"
+                                ]
                         ]
-                     <|
-                        Util.viewIcon
-                            { icon = Icon.play
-                            , color = Colours.sunset
-                            , size = 75
-                            , msg = Just <| StartExercise blocks
-                            }
-                    )
+                        Element.none
+                    , Element.el
+                        [ Element.width Element.fill
+                        , Element.height Element.fill
+                        , Element.inFront <|
+                            Element.paragraph
+                                [ Element.centerX
+                                , Element.centerY
+                                , Font.color Colours.sunset
+                                , Font.size 20
+                                , Font.center
+                                , Font.light
+                                ]
+                                [ Element.el [ Font.bold ] <| Element.text "Note:"
+                                , Element.text " if you press play, you "
+                                , Element.el [ Font.bold ] <| Element.text "cannot"
+                                , Element.text " go back to the settings page without resetting your workout!"
+                                ]
+                        ]
+                        Element.none
+                    ]
 
             Data.InProgress blocks ->
                 let
@@ -241,38 +256,54 @@ view (Application model data) =
                         else
                             Icon.play
                 in
-                Element.el
+                Element.column
                     [ Element.width Element.fill
-                    , Element.centerY
-                    , Element.above <|
-                        Element.el
-                            [ Element.moveUp 100
-                            , Element.centerX
-                            ]
-                            dataGroup.upperElem
-                    , Element.below <|
-                        Element.el
-                            [ Element.moveDown 100
-                            , Element.centerX
-                            ]
-                            dataGroup.timerText
-                    , Element.inFront <|
-                        (Util.viewIcon
-                            { icon = centerButtonIcon
-                            , color = dataGroup.theme
-                            , size = 75
-                            , msg = Just TogglePlay
-                            }
-                            |> Element.el
-                                [ Element.centerX
-                                , Element.moveUp 58
-                                , Element.padding 4
-                                , Background.color Colours.white
-                                ]
-                        )
+                    , Element.height Element.fill
                     ]
-                    dataGroup.timerBar
-                    |> Util.surround 1 4 1
+                    [ Element.el
+                        [ Element.width Element.fill
+                        , Element.height Element.fill
+                        , Element.below
+                            (Util.viewIcon
+                                { icon = centerButtonIcon
+                                , color = dataGroup.theme
+                                , size = 75
+                                , msg = Just TogglePlay
+                                }
+                                |> Element.el
+                                    [ Element.centerX
+                                    , Element.moveUp 56
+                                    , Element.padding 4
+                                    , Background.color Colours.white
+                                    ]
+                                |> Element.el
+                                    [ Element.width Element.fill
+                                    , Element.behindContent <|
+                                        Element.el
+                                            [ Element.width Element.fill ]
+                                            dataGroup.timerBar
+                                    ]
+                            )
+                        , Element.inFront <|
+                            Element.el
+                                [ Element.centerX
+                                , Element.centerY
+                                ]
+                                dataGroup.upperElem
+                        ]
+                        Element.none
+                    , Element.el
+                        [ Element.width Element.fill
+                        , Element.height Element.fill
+                        , Element.inFront <|
+                            Element.el
+                                [ Element.centerX
+                                , Element.centerY
+                                ]
+                                dataGroup.timerText
+                        ]
+                        Element.none
+                    ]
 
             Data.Finished ->
                 Element.column
@@ -346,7 +377,8 @@ view (Application model data) =
 
 
 type Msg
-    = StartExercise (Nonempty Data.TimeBlock)
+    = NewWindowSize Int Int
+    | StartExercise (Nonempty Data.TimeBlock)
     | NextSecond
     | TogglePlay
     | KeyMsg Keyboard.Msg -- so we can react upon the space key press
@@ -355,6 +387,9 @@ type Msg
 update : Msg -> Application -> ( Application, Cmd Msg )
 update msg (Application model data) =
     case msg of
+        NewWindowSize width height ->
+            ( Application model data, Cmd.none )
+
         StartExercise blocks ->
             ( Application model
                 { data
@@ -437,5 +472,6 @@ subscriptions (Application _ data) =
     in
     Sub.batch
         [ Sub.map KeyMsg Keyboard.subscriptions
+        , Browser.Events.onResize NewWindowSize
         , tickSub
         ]

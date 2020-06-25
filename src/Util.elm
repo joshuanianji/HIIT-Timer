@@ -1,4 +1,11 @@
-module Util exposing (Position(..), surround, unselectable, viewIcon, withTooltip)
+module Util exposing
+    ( Position(..)
+    , isVerticalPhone
+    , surround
+    , unselectable
+    , viewIcon
+    , withTooltip
+    )
 
 -- misc functions
 
@@ -63,6 +70,20 @@ viewIcon data =
 unselectable : Element.Attribute msg
 unselectable =
     Element.htmlAttribute (Html.Attributes.class "noselect")
+
+
+
+-- if the user is on a phone and is vertical (would often need to change layout for this)
+
+
+isVerticalPhone : Element.Device -> Bool
+isVerticalPhone device =
+    case ( device.class, device.orientation ) of
+        ( Element.Phone, Element.Portrait ) ->
+            True
+
+        _ ->
+            False
 
 
 withTooltip : { position : Position, content : String } -> Element msg -> Element msg

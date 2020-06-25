@@ -19,6 +19,6 @@ type alias Flags =
 
 
 type alias WindowSize =
-    { height : Int
-    , width : Int
+    { width : Int
+    , height : Int
     }

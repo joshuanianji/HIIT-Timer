@@ -57,12 +57,12 @@ init : Flags -> ( Model, Cmd Msg )
 init flags =
     let
         config =
-            Config.init flags.storedConfig
+            Config.init flags
     in
     ( { windowSize = flags.windowSize
-      , state = Settings
+      , state = Application
       , config = config
-      , application = Application.init (Config.getData config) flags.smhSrc
+      , application = Application.init (Config.getData config) flags
       , showSavedCheck = False
       }
     , Cmd.none
@@ -78,7 +78,6 @@ view model =
     Element.column
         [ Element.width Element.fill
         , Element.height Element.fill
-        , Element.padding 16
         , Element.spacing 24
         ]
         [ case model.state of
@@ -100,13 +99,14 @@ settings model =
         [ Element.width Element.fill
         , Element.height Element.fill
         , Element.spacing 32
+        , Element.paddingXY 0 16
         ]
         [ Config.view model.config
             |> Element.map ConfigMsg
 
         -- save settings; go to applications as well as save to localhost
         , Element.row
-            [ Element.spacing 32
+            [ Element.spacing 16
             , Element.centerX
             ]
             [ Util.viewIcon
@@ -160,6 +160,7 @@ application model =
     Element.column
         [ Element.width Element.fill
         , Element.height Element.fill
+        , Element.padding 16
         ]
         [ Application.view model.application
             |> Element.map ApplicationMsg
@@ -259,8 +260,18 @@ update msg model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
+    let
+        individuals =
+            case model.state of
+                Settings ->
+                    Config.subscriptions model.config
+                        |> Sub.map ConfigMsg
+
+                Application ->
+                    Application.subscriptions model.application
+                        |> Sub.map ApplicationMsg
+    in
     Sub.batch
-        [ Application.subscriptions model.application
-            |> Sub.map ApplicationMsg
+        [ individuals
         , Ports.storeConfigSuccess <| always StoreConfigSuccess
         ]

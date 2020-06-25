@@ -95,6 +95,9 @@ type alias Options msg =
     -- data we need to get from external sources (that can also update)
     , exerciseDuration : Duration
     , breakDuration : Duration
+
+    -- DEVICEEE
+    , device : Element.Device
     }
 
 
@@ -212,6 +215,159 @@ fromData =
 
 view : Options msg -> Set -> Element msg
 view options (Set data) =
+    let
+        title =
+            Element.row
+                [ Element.width Element.fill ]
+                [ Element.column
+                    [ Element.spacing 16
+                    , Element.width Element.fill
+                    ]
+                    [ Input.text
+                        [ Element.width (Element.fill |> Element.maximum 400)
+                        , Font.size 36
+                        , Font.color Colours.sunflower
+                        , Border.color Colours.white
+                        , Element.padding 0
+                        , Element.mouseOver
+                            [ Border.color Colours.sunflower ]
+                        ]
+                        { onChange = options.updateName data.position
+                        , text = data.name
+                        , placeholder = Nothing
+                        , label = Input.labelHidden "New name for set"
+                        }
+                    ]
+                ]
+
+        repeats =
+            let
+                label =
+                    Element.el [ Font.light ] <| Element.text "Number of Repeats:"
+
+                input =
+                    Input.text
+                        [ Font.light ]
+                        { onChange =
+                            String.filter Char.isDigit
+                                >> String.toInt
+                                >> Maybe.withDefault 0
+                                >> options.onUpdateRepeat data.position
+                        , text = String.fromInt data.repeat
+                        , placeholder = Nothing
+                        , label = Input.labelHidden "Number of Repeats:"
+                        }
+
+                repeatIcon =
+                    Util.viewIcon
+                        { icon = Icon.repeat
+                        , color = Colours.sky
+                        , size = 25
+                        , msg = Nothing
+                        }
+            in
+            if Util.isVerticalPhone options.device then
+                Element.column
+                    [ Element.spacing 4 ]
+                    [ label
+                    , Element.row
+                        [ Element.spacing 4 ]
+                        [ input, repeatIcon ]
+                    ]
+
+            else
+                Element.row
+                    [ Element.spacing 4 ]
+                    [ label
+                    , input
+                    , repeatIcon
+                    ]
+
+        totalDurations =
+            Element.column
+                [ Element.width Element.fill
+                , Element.spacing 8
+                ]
+                [ Element.row
+                    [ -- total time of a set
+                      Font.light
+                    , Element.spacing 2
+                    ]
+                    [ getTimeWithoutRepeats
+                        { exerciseDuration = options.exerciseDuration
+                        , breakDuration = options.breakDuration
+                        }
+                        (Set data)
+                        |> Duration.viewFancy
+                        |> Element.el
+                            [ Font.color Colours.sunflower ]
+                    , Element.text " for "
+                    , Dict.size data.exercises
+                        |> String.fromInt
+                        |> Element.text
+                        |> Element.el [ Font.color Colours.sunflower ]
+                    , Element.el [ Font.color Colours.sunflower ] <|
+                        Element.text
+                            (if Dict.size data.exercises == 1 then
+                                " exercise."
+
+                             else
+                                " exercises."
+                            )
+                    ]
+
+                -- total time including repeats
+                , if data.repeat <= 1 then
+                    -- no point in repeating the same info
+                    Element.none
+
+                  else
+                    Element.row
+                        [ Font.light
+                        , Element.spacing 2
+                        ]
+                        [ Element.text "Total time: "
+                        , totalTime
+                            { exerciseDuration = options.exerciseDuration
+                            , breakDuration = options.breakDuration
+                            }
+                            (Set data)
+                            |> Duration.viewFancy
+                            |> Element.el
+                                [ Font.color Colours.sunflower ]
+                        , Element.text ", with "
+                        , data.repeat
+                            - 1
+                            |> String.fromInt
+                            |> Element.text
+                            |> Element.el [ Font.color Colours.sunflower ]
+                        , Element.el [ Font.color Colours.sunflower ] <|
+                            Element.text
+                                (if data.repeat == 2 then
+                                    " break."
+
+                                 else
+                                    " breaks."
+                                )
+                        ]
+                ]
+
+        deleteSetIcon =
+            Util.viewIcon
+                { icon = Icon.trash
+                , color = Colours.sunset
+                , size = 25
+                , msg = Just <| options.onDelete data.position
+                }
+
+        copySetIcon =
+            Util.viewIcon
+                { icon = Icon.copy
+                , color = Colours.sky
+                , size = 25
+                , msg = Just <| options.onCopy data.position
+                }
+    in
     Element.column
         [ Element.width Element.fill
         , Element.padding 16
@@ -220,149 +376,49 @@ view options (Set data) =
         , Border.color Colours.sunflower
         , Border.rounded 4
         ]
-        [ -- title stuff
-          Element.row
-            [ Element.width Element.fill ]
-            [ Element.column
-                [ Element.spacing 16
-                , Element.width Element.fill
-                ]
-                [ Input.text
-                    [ Element.width (Element.fill |> Element.maximum 400)
-                    , Font.size 36
-                    , Font.color Colours.sunflower
-                    , Border.color Colours.white
-                    , Element.padding 0
-                    , Element.mouseOver
-                        [ Border.color Colours.sunflower ]
-                    ]
-                    { onChange = options.updateName data.position
-                    , text = data.name
-                    , placeholder = Nothing
-                    , label = Input.labelHidden "New name for set"
-                    }
-
-                -- number of repeats
+        [ if Util.isVerticalPhone options.device then
+            -- completely vertical (also no tooltips)
+            Element.column
+                [ Element.spacing 24 ]
+                [ title
+                , repeats
+                , totalDurations
                 , Element.row
-                    []
-                    [ Input.text
-                        [ Font.light
-                        ]
-                        { onChange =
-                            String.filter Char.isDigit
-                                >> String.toInt
-                                >> Maybe.withDefault 0
-                                >> options.onUpdateRepeat data.position
-                        , text = String.fromInt data.repeat
-                        , placeholder = Nothing
-                        , label = Input.labelLeft [ Font.light ] <| Element.text "Number of Repeats:"
-                        }
-                    , Util.viewIcon
-                        { icon = Icon.repeat
-                        , color = Colours.sky
-                        , size = 25
-                        , msg = Nothing
-                        }
+                    [ Element.spacing 8
+                    , Element.centerX
                     ]
+                    [ deleteSetIcon
+                    , copySetIcon
+                    ]
+                ]
 
-                -- total times
+          else
+            -- some horizontal
+            Element.row
+                []
+                [ Element.column
+                    [ Element.spacing 8 ]
+                    [ title
+                    , repeats
+                    , totalDurations
+                    ]
                 , Element.column
-                    [ Element.width Element.fill
-                    , Element.spacing 8
+                    [ Element.spacing 8
+                    , Element.alignRight
+                    , Element.centerY
                     ]
-                    [ Element.row
-                        [ -- total time of a set
-                          Font.light
-                        , Element.spacing 2
-                        ]
-                        [ getTimeWithoutRepeats
-                            { exerciseDuration = options.exerciseDuration
-                            , breakDuration = options.breakDuration
+                    [ deleteSetIcon
+                        |> Util.withTooltip
+                            { position = Util.Left
+                            , content = "Delete Set"
                             }
-                            (Set data)
-                            |> Duration.viewFancy
-                            |> Element.el
-                                [ Font.color Colours.sunflower ]
-                        , Element.text " for "
-                        , Dict.size data.exercises
-                            |> String.fromInt
-                            |> Element.text
-                            |> Element.el [ Font.color Colours.sunflower ]
-                        , Element.el [ Font.color Colours.sunflower ] <|
-                            Element.text
-                                (if Dict.size data.exercises == 1 then
-                                    " exercise."
-
-                                 else
-                                    " exercises."
-                                )
-                        ]
-
-                    -- total time including repeats
-                    , if data.repeat <= 1 then
-                        -- no point in repeating the same info
-                        Element.none
-
-                      else
-                        Element.row
-                            [ Font.light
-                            , Element.spacing 2
-                            ]
-                            [ Element.text "Total time: "
-                            , totalTime
-                                { exerciseDuration = options.exerciseDuration
-                                , breakDuration = options.breakDuration
-                                }
-                                (Set data)
-                                |> Duration.viewFancy
-                                |> Element.el
-                                    [ Font.color Colours.sunflower ]
-                            , Element.text ", with "
-                            , data.repeat
-                                - 1
-                                |> String.fromInt
-                                |> Element.text
-                                |> Element.el [ Font.color Colours.sunflower ]
-                            , Element.el [ Font.color Colours.sunflower ] <|
-                                Element.text
-                                    (if data.repeat == 2 then
-                                        " break."
-
-                                     else
-                                        " breaks."
-                                    )
-                            ]
+                    , copySetIcon
+                        |> Util.withTooltip
+                            { position = Util.Left
+                            , content = "Delete Set"
+                            }
                     ]
                 ]
-
-            -- icons on the right
-            , Element.column
-                [ Element.spacing 8
-                , Element.alignRight
-                , Element.centerY
-                ]
-                [ Util.viewIcon
-                    { icon = Icon.trash
-                    , color = Colours.sunset
-                    , size = 25
-                    , msg = Just <| options.onDelete data.position
-                    }
-                    |> Util.withTooltip
-                        { position = Util.Left
-                        , content = "Delete Set"
-                        }
-                , Util.viewIcon
-                    { icon = Icon.copy
-                    , color = Colours.sky
-                    , size = 25
-                    , msg = Just <| options.onCopy data.position
-                    }
-                    |> Util.withTooltip
-                        { position = Util.Left
-                        , content = "Duplicate Set"
-                        }
-                ]
-            ]
 
         -- exercises
         , if data.expanded then

@@ -37,6 +37,7 @@ type alias Options msg =
     { updateInput : String -> msg
     , updateFocus : Bool -> msg
     , displayText : Maybe String
+    , device : Element.Device
     }
 
 
@@ -72,74 +73,92 @@ getDuration (TimeInput data) =
 
 view : Options msg -> TimeInput -> Element msg
 view options (TimeInput data) =
-    Element.row
-        [ Element.spacing 8
-        , Element.centerX
-        ]
-        [ Input.text
-            [ Element.width (Element.px 175)
-            , Element.padding 24
-
-            -- FONT SIZE 0 HIDES THE STUPID UGLY BEHIND-THE-SCENES TEXT
-            , Font.size 0
-
-            -- it's weird how inFront works better  - if i write behindContent, it'll take two clicks to focus on the input.
-            , Element.inFront <|
-                -- if it's not focused, we would have gotten the new sanitized object
-                Element.row
-                    [ Element.padding 8
-                    , Element.spacing 3
-                    , Element.centerY
-                    , Font.size 20
-                    , Element.alignRight
-                    , Font.color Colours.black
-
-                    -- cursor
-                    , Element.inFront <|
-                        if data.focused then
-                            Element.el
-                                [ Element.centerY
-                                , Element.padding 8
-                                , Element.height Element.fill
-                                , Element.alignRight
-                                ]
-                                (Element.el
-                                    [ Element.height Element.fill
-                                    , Element.width (Element.px 1)
-                                    , Background.color Colours.black
-                                    ]
-                                    Element.none
-                                )
-
-                        else
-                            Element.none
-                    ]
-                    [ Duration.viewFancy data.duration ]
-            , Events.onFocus <| options.updateFocus True
-            , Events.onLoseFocus <| options.updateFocus False
-
-            -- so we don't see the ugly underlying text
-            , Font.color Colours.transparent
-            , Util.unselectable
-            ]
-            { onChange = options.updateInput
-            , text = data.input
-            , placeholder = Nothing
-            , label =
-                Input.labelLeft
-                    [ Element.centerY
-                    , Element.centerX
-                    , Element.padding 4
-                    , Font.light
-                    , Font.size 20
-                    ]
-                <|
-                    (options.displayText
-                        |> Maybe.map Element.text
-                        |> Maybe.withDefault Element.none
+    let
+        label =
+            options.displayText
+                |> Maybe.map Element.text
+                |> Maybe.map (Element.el [ Element.centerY ])
+                |> Maybe.map
+                    (Element.el
+                        [ Font.light
+                        , Element.height (Element.px 50)
+                        , Element.centerY
+                        , Element.padding 8
+                        ]
                     )
-            }
-        ]
+                |> Maybe.withDefault Element.none
+
+        input =
+            Input.text
+                [ Element.width (Element.px 175)
+                , Element.padding 24
+
+                -- FONT SIZE 0 HIDES THE STUPID UGLY BEHIND-THE-SCENES TEXT
+                , Font.size 0
+
+                -- it's weird how inFront works better  - if i write behindContent, it'll take two clicks to focus on the input.
+                , Element.inFront <|
+                    -- if it's not focused, we would have gotten the new sanitized object
+                    Element.row
+                        [ Element.padding 8
+                        , Element.spacing 3
+                        , Element.centerY
+                        , Font.size 20
+                        , Element.alignRight
+                        , Font.color Colours.black
+
+                        -- cursor
+                        , Element.inFront <|
+                            if data.focused then
+                                Element.el
+                                    [ Element.centerY
+                                    , Element.padding 8
+                                    , Element.height Element.fill
+                                    , Element.alignRight
+                                    ]
+                                    (Element.el
+                                        [ Element.height Element.fill
+                                        , Element.width (Element.px 1)
+                                        , Background.color Colours.black
+                                        ]
+                                        Element.none
+                                    )
+
+                            else
+                                Element.none
+                        ]
+                        [ Duration.viewFancy data.duration ]
+                , Events.onFocus <| options.updateFocus True
+                , Events.onLoseFocus <| options.updateFocus False
+
+                -- so we don't see the ugly underlying text
+                , Font.color Colours.black
+                , Util.unselectable
+                ]
+                { onChange = options.updateInput
+                , text = data.input
+                , placeholder = Nothing
+                , label = Input.labelHidden <| Maybe.withDefault "" options.displayText
+                }
+    in
+    if Util.isVerticalPhone options.device then
+        Element.column
+            [ Element.centerX ]
+            (List.map (Element.el [ Element.centerX ])
+                [ label
+                , input
+                ]
+            )
+
+    else
+        Element.el
+            [ Element.onRight <|
+                Element.el [ Element.centerY ] input
+            , Element.onLeft label
+            , Element.centerX
+            , Element.height (Element.px 64)
+            ]
+            Element.none
 
 
 

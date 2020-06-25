@@ -4,13 +4,16 @@ module View.Config exposing
     , encode
     , getData
     , init
+    , subscriptions
     , update
     , view
     )
 
+import Browser.Events
 import Colours
 import Data.Config as Data
 import Data.Duration as Duration exposing (Duration)
+import Data.Flags as Flags exposing (Flags)
 import Dict
 import Element exposing (Element)
 import Element.Background as Background
@@ -30,20 +33,24 @@ import Util
 
 
 type Config
-    = Config Data.Data
+    = Config Model Data.Data
+
+
+type alias Model =
+    { device : Element.Device }
 
 
 
 -- INIT AND JSON STUFF
 
 
-init : Json.Encode.Value -> Config
-init localStorageValue =
+init : Flags -> Config
+init flags =
     let
         decodeLocalStorageAttempt =
-            Data.decodeLocalStorage localStorageValue
+            Data.decodeLocalStorage flags.storedConfig
 
-        ( actualData, mErr ) =
+        ( data, mErr ) =
             case decodeLocalStorageAttempt of
                 -- there was no config stored in the first place
                 Ok Nothing ->
@@ -56,8 +63,14 @@ init localStorageValue =
                 -- failure to decode
                 Err jsonErr ->
                     ( Data.default, Just <| Json.Decode.errorToString jsonErr )
+
+        actualData =
+            { data | error = mErr }
+
+        model =
+            { device = Element.classifyDevice flags.windowSize }
     in
-    Config { actualData | error = mErr }
+    Config model { actualData | error = mErr }
 
 
 
@@ -65,12 +78,12 @@ init localStorageValue =
 
 
 encode : Config -> Json.Encode.Value
-encode (Config data) =
+encode (Config _ data) =
     Data.encode data
 
 
 getData : Config -> Data.Data
-getData (Config data) =
+getData (Config _ data) =
     data
 
 
@@ -104,12 +117,21 @@ totalTime data =
 
 
 view : Config -> Element Msg
-view (Config data) =
+view (Config model data) =
+    let
+        paddingX =
+            case model.device.class of
+                Element.Phone ->
+                    4
+
+                _ ->
+                    32
+    in
     Element.column
         [ Element.width (Element.fill |> Element.maximum 1000)
         , Element.centerX
         , Element.height Element.fill
-        , Element.padding 32
+        , Element.paddingXY paddingX 32
         , Element.spacing 48
         ]
         [ Util.viewIcon
@@ -130,122 +152,97 @@ view (Config data) =
             ]
             [ Element.column
                 [ Element.centerX
-                , Element.spacing 64
+                , Element.spacing 12
                 ]
-                [ Element.el
-                    [ Element.onRight <|
-                        Element.el
-                            [ Element.centerY ]
-                        <|
-                            TimeInput.view
-                                { updateInput = UpdateInput Exercise
-                                , updateFocus = UpdateFocus Exercise
-                                , displayText = Nothing
-                                }
-                                data.exerciseInput
-                    , Element.text "Exercise Duration:"
-                        |> Element.el [ Element.centerY ]
-                        |> Element.el
-                            [ Font.light
-                            , Element.height (Element.px 50)
-                            , Element.centerY
-                            ]
-                        |> Element.onLeft
-                    , Element.centerX
-                    ]
-                    Element.none
-                , Element.el
-                    [ Element.onRight <|
-                        Element.el
-                            [ Element.centerY ]
-                        <|
-                            TimeInput.view
-                                { updateInput = UpdateInput Break
-                                , updateFocus = UpdateFocus Break
-                                , displayText = Nothing
-                                }
-                                data.breakInput
-                    , Element.text "Break Between Exercises:"
-                        |> Element.el [ Element.centerY ]
-                        |> Element.el
-                            [ Font.light
-                            , Element.height (Element.px 50)
-                            , Element.centerY
-                            ]
-                        |> Element.onLeft
-                    , Element.centerX
-                    ]
-                    Element.none
-                , Element.el
-                    [ Element.onRight <|
-                        Element.el
-                            [ Element.centerY ]
-                        <|
-                            TimeInput.view
-                                { updateInput = UpdateInput SetBreak
-                                , updateFocus = UpdateFocus SetBreak
-                                , displayText = Nothing
-                                }
-                                data.setBreakInput
-                    , Element.text "Break Between Sets:"
-                        |> Element.el [ Element.centerY ]
-                        |> Element.el
-                            [ Font.light
-                            , Element.height (Element.px 50)
-                            , Element.centerY
-                            ]
-                        |> Element.onLeft
-                    , Element.centerX
-                    ]
-                    Element.none
+                [ TimeInput.view
+                    { updateInput = UpdateInput Exercise
+                    , updateFocus = UpdateFocus Exercise
+                    , displayText = Just "Exercise Duration:"
+                    , device = model.device
+                    }
+                    data.exerciseInput
+                , TimeInput.view
+                    { updateInput = UpdateInput Break
+                    , updateFocus = UpdateFocus Break
+                    , displayText = Just "Break Between Exercises:"
+                    , device = model.device
+                    }
+                    data.breakInput
+                , TimeInput.view
+                    { updateInput = UpdateInput SetBreak
+                    , updateFocus = UpdateFocus SetBreak
+                    , displayText = Just "Break Between Sets:"
+                    , device = model.device
+                    }
+                    data.setBreakInput
 
                 -- countdown
-                , Element.row
-                    [ Element.spacing 8
-                    , Element.centerX
-                    ]
-                    [ Input.checkbox
-                        [ Font.light
-                        , Element.padding 4
-                        ]
-                        { onChange = ToggleCountdown
-                        , icon =
-                            \on ->
-                                if on then
-                                    Util.viewIcon
-                                        { icon = Icon.checkSquare
-                                        , color = Colours.grass
-                                        , size = 30
-                                        , msg = Nothing
-                                        }
-
-                                else
-                                    Util.viewIcon
-                                        { icon = Icon.xSquare
-                                        , color = Colours.sunset
-                                        , size = 30
-                                        , msg = Nothing
-                                        }
-                        , checked = data.countdown
-                        , label = Input.labelLeft [ Element.padding 8, Element.centerY ] <| Element.text "Countdown:"
-                        }
-                        |> Element.el
-                            [ Element.centerX ]
-                    , if data.countdown then
-                        data.countdownInput
-                            |> TimeInput.view
-                                { updateInput = UpdateInput Countdown
-                                , updateFocus = UpdateFocus Countdown
-                                , displayText = Nothing
-                                }
-
-                      else
-                        Element.el
-                            [ Element.width <| Element.px 188
+                , let
+                    countdownLabel =
+                        Input.checkbox
+                            [ Font.light
                             , Element.padding 4
                             ]
-                            Element.none
-                    ]
+                            { onChange = ToggleCountdown
+                            , icon =
+                                \on ->
+                                    if on then
+                                        Util.viewIcon
+                                            { icon = Icon.checkSquare
+                                            , color = Colours.grass
+                                            , size = 30
+                                            , msg = Nothing
+                                            }
+
+                                    else
+                                        Util.viewIcon
+                                            { icon = Icon.xSquare
+                                            , color = Colours.sunset
+                                            , size = 30
+                                            , msg = Nothing
+                                            }
+                            , checked = data.countdown
+                            , label = Input.labelLeft [ Element.padding 8, Element.centerY ] <| Element.text "Countdown:"
+                            }
+                            |> Element.el
+                                [ Element.centerX ]
+
+                    countdownInput =
+                        if data.countdown then
+                            data.countdownInput
+                                |> TimeInput.view
+                                    { updateInput = UpdateInput Countdown
+                                    , updateFocus = UpdateFocus Countdown
+                                    , displayText = Nothing
+                                    , device = model.device
+                                    }
+
+                        else
+                            Element.el
+                                [ Element.width <| Element.px 188
+                                , Element.padding 4
+                                ]
+                                Element.none
+                  in
+                  if Util.isVerticalPhone model.device then
+                    -- orient vertically
+                    Element.column
+                        [ Element.spacing 8
+                        , Element.centerX
+                        ]
+                        [ countdownLabel
+                        , countdownInput
+                        ]
+
+                  else
+                    -- orient sideways
+                    Element.row
+                        [ Element.spacing 8
+                        , Element.centerX
+                        ]
+                        [ countdownLabel
+                        , countdownInput
+                        ]
                 ]
             ]
 
@@ -283,6 +280,7 @@ view (Config data) =
                             , updateExerciseName = UpdateExerciseName
                             , exerciseDuration = TimeInput.getDuration data.exerciseInput
                             , breakDuration = TimeInput.getDuration data.breakInput
+                            , device = model.device
                             }
                             set
                     )
@@ -318,7 +316,8 @@ view (Config data) =
 
 
 type Msg
-    = UpdateInput Input String
+    = NewWindowSize Int Int
+    | UpdateInput Input String
     | UpdateFocus Input Bool
     | NewElement Int
     | DeleteElement Int Int
@@ -344,37 +343,40 @@ type Input
 
 
 update : Msg -> Config -> Config
-update msg (Config data) =
+update msg (Config model data) =
     case msg of
+        NewWindowSize width height ->
+            Config { model | device = Element.classifyDevice <| Flags.WindowSize width height } data
+
         UpdateInput Exercise newVal ->
-            Config { data | exerciseInput = TimeInput.updateInput data.exerciseInput newVal }
+            Config model { data | exerciseInput = TimeInput.updateInput data.exerciseInput newVal }
 
         UpdateFocus Exercise isFocused ->
-            Config { data | exerciseInput = TimeInput.updateFocus data.exerciseInput isFocused }
+            Config model { data | exerciseInput = TimeInput.updateFocus data.exerciseInput isFocused }
 
         UpdateInput Break newVal ->
-            Config { data | breakInput = TimeInput.updateInput data.breakInput newVal }
+            Config model { data | breakInput = TimeInput.updateInput data.breakInput newVal }
 
         UpdateFocus Break isFocused ->
-            Config { data | breakInput = TimeInput.updateFocus data.breakInput isFocused }
+            Config model { data | breakInput = TimeInput.updateFocus data.breakInput isFocused }
 
         UpdateInput SetBreak newVal ->
-            Config { data | setBreakInput = TimeInput.updateInput data.setBreakInput newVal }
+            Config model { data | setBreakInput = TimeInput.updateInput data.setBreakInput newVal }
 
         UpdateFocus SetBreak isFocused ->
-            Config { data | setBreakInput = TimeInput.updateFocus data.setBreakInput isFocused }
+            Config model { data | setBreakInput = TimeInput.updateFocus data.setBreakInput isFocused }
 
         UpdateInput Countdown newVal ->
-            Config { data | countdownInput = TimeInput.updateInput data.countdownInput newVal }
+            Config model { data | countdownInput = TimeInput.updateInput data.countdownInput newVal }
 
         UpdateFocus Countdown isFocused ->
-            Config { data | countdownInput = TimeInput.updateFocus data.countdownInput isFocused }
+            Config model { data | countdownInput = TimeInput.updateFocus data.countdownInput isFocused }
 
         ToggleCountdown bool ->
-            Config { data | countdown = bool }
+            Config model { data | countdown = bool }
 
         NewElement setPos ->
-            Config
+            Config model
                 { data
                     | sets =
                         Dict.update
@@ -384,7 +386,7 @@ update msg (Config data) =
                 }
 
         DeleteElement setPos elemPos ->
-            Config
+            Config model
                 { data
                     | sets =
                         Dict.update
@@ -394,7 +396,7 @@ update msg (Config data) =
                 }
 
         NewSetRepeat setPos repeat ->
-            Config
+            Config model
                 { data
                     | sets =
                         Dict.update
@@ -404,14 +406,14 @@ update msg (Config data) =
                 }
 
         DeleteSet setPos ->
-            Config <| Data.sanitizeSets { data | sets = Dict.remove setPos data.sets }
+            Config model <| Data.sanitizeSets { data | sets = Dict.remove setPos data.sets }
 
         AddSet ->
             let
                 newN =
                     data.setCounter + 1
             in
-            Config
+            Config model
                 { data
                     | sets = Dict.insert newN (Set.init newN) data.sets
                     , setCounter = newN
@@ -420,7 +422,7 @@ update msg (Config data) =
         CopySet setPos ->
             case Dict.get setPos data.sets of
                 Nothing ->
-                    Config data
+                    Config model data
 
                 Just setToCopy ->
                     let
@@ -437,17 +439,22 @@ update msg (Config data) =
                                     )
                                 |> Dict.fromList
                     in
-                    Config
+                    Config model
                         { data
                             | sets = Dict.insert (setPos + 1) (Set.updatePosition (setPos + 1) setToCopy) newSets
                             , setCounter = Dict.size data.sets + 1
                         }
 
         ToggleSetExpand setPos ->
-            Config { data | sets = Dict.update setPos (Maybe.map Set.toggleExpand) data.sets }
+            Config model { data | sets = Dict.update setPos (Maybe.map Set.toggleExpand) data.sets }
 
         UpdateSetName setPos newName ->
-            Config { data | sets = Dict.update setPos (Maybe.map <| Set.updateName newName) data.sets }
+            Config model { data | sets = Dict.update setPos (Maybe.map <| Set.updateName newName) data.sets }
 
         UpdateExerciseName setPos exercisePos newName ->
-            Config { data | sets = Dict.update setPos (Maybe.map <| Set.updateExerciseName exercisePos newName) data.sets }
+            Config model { data | sets = Dict.update setPos (Maybe.map <| Set.updateExerciseName exercisePos newName) data.sets }
+
+
+subscriptions : Config -> Sub Msg
+subscriptions (Config model data) =
+    Browser.Events.onResize NewWindowSize
