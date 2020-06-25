@@ -1,6 +1,6 @@
 {
-  "short_name": "HIIT Timer",
-  "name": "A Simple App to time workouts",
+  "short_name": "Elm App",
+  "name": "Create Elm App Sample",
   "icons": [
     {
       "src": "favicon.ico",
