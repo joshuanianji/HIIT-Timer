@@ -395,9 +395,11 @@ view options (Set data) =
           else
             -- some horizontal
             Element.row
-                []
+                [ Element.width Element.fill ]
                 [ Element.column
-                    [ Element.spacing 8 ]
+                    [ Element.spacing 8
+                    , Element.width Element.fill
+                    ]
                     [ title
                     , repeats
                     , totalDurations

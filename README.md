@@ -10,3 +10,5 @@ You can see it in action [here](https://joshuaji.com/projects/hiit-timer/)
 ## Run It Yourself
 
 Make sure you have Elm and create-elm-app installed. Once you `git clone` the repo, run `elm-app start` to open the development server with the cool debug feature.
+
+`elm-app build` also builds the project in the `build` folder (which I gitignored).
