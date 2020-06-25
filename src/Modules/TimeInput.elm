@@ -4,9 +4,11 @@ import Colours
 import Data.Duration as Duration exposing (Duration)
 import Element exposing (Element)
 import Element.Background as Background
+import Element.Border as Border
 import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
+import Html.Attributes
 import Util
 
 
@@ -91,6 +93,8 @@ view options (TimeInput data) =
             Input.text
                 [ Element.width (Element.px 175)
                 , Element.padding 24
+                , Element.htmlAttribute <| Html.Attributes.type_ "number"
+                , Element.htmlAttribute <| Html.Attributes.min "0"
 
                 -- FONT SIZE 0 HIDES THE STUPID UGLY BEHIND-THE-SCENES TEXT
                 , Font.size 0
@@ -102,8 +106,8 @@ view options (TimeInput data) =
                         [ Element.padding 8
                         , Element.spacing 3
                         , Element.centerY
-                        , Font.size 20
                         , Element.alignRight
+                        , Font.size 20
                         , Font.color Colours.black
 
                         -- cursor
@@ -129,9 +133,6 @@ view options (TimeInput data) =
                         [ Duration.viewFancy data.duration ]
                 , Events.onFocus <| options.updateFocus True
                 , Events.onLoseFocus <| options.updateFocus False
-
-                -- so we don't see the ugly underlying text
-                , Font.color Colours.black
                 , Util.unselectable
                 ]
                 { onChange = options.updateInput
@@ -172,9 +173,24 @@ view options (TimeInput data) =
 updateInput : TimeInput -> String -> TimeInput
 updateInput (TimeInput data) newInput =
     let
+        -- so we won't get "stuck" at 0003 or something
+        -- this changes 0012 -> 12
+        removeLeftZeroes str =
+            String.foldl
+                (\c acc ->
+                    if acc == "" && c == '0' then
+                        ""
+
+                    else
+                        acc ++ String.fromChar c
+                )
+                ""
+                str
+
         sanitizedInput =
             newInput
                 |> String.filter Char.isDigit
+                |> removeLeftZeroes
                 |> String.left 4
     in
     TimeInput

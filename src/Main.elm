@@ -57,7 +57,7 @@ init flags =
             Config.init flags
     in
     ( { windowSize = flags.windowSize
-      , state = Application
+      , state = Settings
       , config = config
       , application = Application.init (Config.getData config) flags
       , showSavedCheck = False
@@ -84,7 +84,21 @@ view model =
             Application ->
                 application model
         ]
-        |> Element.layout
+        |> Element.layoutWith
+            { options =
+                [ Element.focusStyle
+                    { borderColor = Just Colours.focusBorder
+                    , backgroundColor = Nothing
+                    , shadow =
+                        Just
+                            { color = Colours.focusBorder
+                            , offset = ( 0, 0 )
+                            , blur = 0
+                            , size = 3
+                            }
+                    }
+                ]
+            }
             [ Font.family
                 [ Font.typeface "Lato" ]
             ]

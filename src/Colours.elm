@@ -1,4 +1,4 @@
-module Colours exposing (black, grass, sky, sunflower, sunset, transparent, white)
+module Colours exposing (black, focusBorder, grass, sky, sunflower, sunset, transparent, white)
 
 -- color scheme based off of "Primary Colours with Vibrant Twist" from https://www.canva.com/learn/100-color-combinations/
 
@@ -42,3 +42,8 @@ black =
 transparent : Color
 transparent =
     Element.rgba 0 0 0 0
+
+
+focusBorder : Color
+focusBorder =
+    Element.rgb255 154 203 255

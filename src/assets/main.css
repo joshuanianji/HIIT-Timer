@@ -12,13 +12,25 @@ html::-webkit-scrollbar{
               user-select: none; /* Non-prefixed version, currently
                                     supported by Chrome and Opera */
 }
-
+/* no clicks in input lol */
 input {
     pointer-events:none;
     user-select: none;
 }
 .no-cursor {
     caret-color: transparent;
+}
+/* hide arrows in number selection */
+/* Chrome, Safari, Edge, Opera */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+input[type=number] {
+  -moz-appearance: textfield;
 }
 
 .duration-input {

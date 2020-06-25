@@ -150,7 +150,11 @@ totalTime :
     -> Set
     -> Duration
 totalTime options (Set data) =
-    Duration.add (Duration.times (getTimeWithoutRepeats options (Set data)) data.repeat) (Duration.times options.breakDuration (data.repeat - 1))
+    if data.repeat == 0 then
+        Duration.init 0
+
+    else
+        Duration.add (Duration.times (getTimeWithoutRepeats options (Set data)) data.repeat) (Duration.times options.breakDuration (data.repeat - 1))
 
 
 getTimeWithoutRepeats :
