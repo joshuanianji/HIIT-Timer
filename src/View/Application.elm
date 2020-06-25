@@ -249,6 +249,31 @@ view (Application model data) =
                                 , theme = Colours.sunset
                                 }
 
+                    nextupString =
+                        case List.head <| List.Nonempty.tail blocks of
+                            Just (Data.ExerciseBreak _ _) ->
+                                "Break"
+
+                            Just (Data.SetBreak _ _) ->
+                                "Break"
+
+                            Just (Data.Exercise d) ->
+                                d.name
+
+                            _ ->
+                                "Workout Completion"
+
+                    nextup =
+                        Element.paragraph
+                            [ Element.centerX
+                            , Font.size 32
+                            , Font.color Colours.sky
+                            , Font.light
+                            ]
+                            [ Element.text "Next up: "
+                            , Element.text nextupString
+                            ]
+
                     centerButtonIcon =
                         if data.playing then
                             Icon.pause
@@ -260,7 +285,8 @@ view (Application model data) =
                     [ Element.width Element.fill
                     , Element.height Element.fill
                     ]
-                    [ Element.el
+                    [ -- Toggle button and all things above the button
+                      Element.el
                         [ Element.width Element.fill
                         , Element.height Element.fill
                         , Element.below
@@ -292,15 +318,20 @@ view (Application model data) =
                                 dataGroup.upperElem
                         ]
                         Element.none
+
+                    -- all things below the button
                     , Element.el
                         [ Element.width Element.fill
                         , Element.height Element.fill
                         , Element.inFront <|
-                            Element.el
+                            Element.column
                                 [ Element.centerX
                                 , Element.centerY
+                                , Element.spacing 16
                                 ]
-                                dataGroup.timerText
+                                [ dataGroup.timerText
+                                , nextup
+                                ]
                         ]
                         Element.none
                     ]
