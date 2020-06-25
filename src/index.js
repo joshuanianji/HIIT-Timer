@@ -51,7 +51,8 @@ app.ports.storeConfig.subscribe(config => {
     let configJson = JSON.stringify(config);
     localStorage.setItem('config', configJson);
     console.log("Saved state: ", configJson);
-    app.ports.storeConfigSuccess.send(null)
+    // the actual process is too fast so I set a timeout to make it seem more realiztis LOL
+    setTimeout(() => app.ports.storeConfigSuccess.send(null), 250);
 });
 
 app.ports.playWhistle.subscribe(() => {

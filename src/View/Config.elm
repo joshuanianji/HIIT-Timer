@@ -25,6 +25,7 @@ import Json.Encode
 import Modules.Exercise as Exercise
 import Modules.Set as Set
 import Modules.TimeInput as TimeInput
+import Ports
 import Util
 
 
@@ -37,7 +38,9 @@ type Config
 
 
 type alias Model =
-    { device : Element.Device }
+    { device : Element.Device
+    , saving : Bool
+    }
 
 
 
@@ -68,7 +71,9 @@ init flags =
             { data | error = mErr }
 
         model =
-            { device = Element.classifyDevice flags.windowSize }
+            { device = Element.classifyDevice flags.windowSize
+            , saving = False
+            }
     in
     Config model { actualData | error = mErr }
 
@@ -311,6 +316,26 @@ view (Config model data) =
                         ]
                 )
             ]
+
+        -- If the settings is saved or not
+        , Element.el
+            [ Element.centerX ]
+          <|
+            if model.saving then
+                Element.el
+                    [ Font.light
+                    , Font.color Colours.sunflower
+                    ]
+                <|
+                    Element.text "saving..."
+
+            else
+                Element.el
+                    [ Font.light
+                    , Font.color Colours.grass
+                    ]
+                <|
+                    Element.text "All Changes Saved to Local Storage "
         ]
 
 
@@ -332,6 +357,8 @@ type Msg
     | UpdateSetName Int String
     | UpdateExerciseName Int Int String
     | ToggleCountdown Bool
+    | ToLocalStorage -- save to local storage
+    | StoreConfigSuccess -- when local storage succeeds
 
 
 
@@ -345,38 +372,43 @@ type Input
     | Countdown
 
 
-update : Msg -> Config -> Config
+update : Msg -> Config -> ( Config, Cmd Msg )
 update msg (Config model data) =
     case msg of
         NewWindowSize width height ->
-            Config { model | device = Element.classifyDevice <| Flags.WindowSize width height } data
+            ( Config { model | device = Element.classifyDevice <| Flags.WindowSize width height } data, Cmd.none )
 
         UpdateInput Exercise newVal ->
-            Config model { data | exerciseInput = TimeInput.updateInput data.exerciseInput newVal }
+            ( Config model { data | exerciseInput = TimeInput.updateInput data.exerciseInput newVal }, Cmd.none )
 
         UpdateFocus Exercise isFocused ->
             Config model { data | exerciseInput = TimeInput.updateFocus data.exerciseInput isFocused }
+                |> saveToLocalStorage
 
         UpdateInput Break newVal ->
-            Config model { data | breakInput = TimeInput.updateInput data.breakInput newVal }
+            ( Config model { data | breakInput = TimeInput.updateInput data.breakInput newVal }, Cmd.none )
 
         UpdateFocus Break isFocused ->
             Config model { data | breakInput = TimeInput.updateFocus data.breakInput isFocused }
+                |> saveToLocalStorage
 
         UpdateInput SetBreak newVal ->
-            Config model { data | setBreakInput = TimeInput.updateInput data.setBreakInput newVal }
+            ( Config model { data | setBreakInput = TimeInput.updateInput data.setBreakInput newVal }, Cmd.none )
 
         UpdateFocus SetBreak isFocused ->
             Config model { data | setBreakInput = TimeInput.updateFocus data.setBreakInput isFocused }
+                |> saveToLocalStorage
 
         UpdateInput Countdown newVal ->
-            Config model { data | countdownInput = TimeInput.updateInput data.countdownInput newVal }
+            ( Config model { data | countdownInput = TimeInput.updateInput data.countdownInput newVal }, Cmd.none )
 
         UpdateFocus Countdown isFocused ->
             Config model { data | countdownInput = TimeInput.updateFocus data.countdownInput isFocused }
+                |> saveToLocalStorage
 
         ToggleCountdown bool ->
             Config model { data | countdown = bool }
+                |> saveToLocalStorage
 
         NewElement setPos ->
             Config model
@@ -387,6 +419,7 @@ update msg (Config model data) =
                             (Maybe.map Set.newExercise)
                             data.sets
                 }
+                |> saveToLocalStorage
 
         DeleteElement setPos elemPos ->
             Config model
@@ -397,6 +430,7 @@ update msg (Config model data) =
                             (Maybe.map <| (Set.deleteExercise elemPos >> Set.sanitizeExercises))
                             data.sets
                 }
+                |> saveToLocalStorage
 
         NewSetRepeat setPos repeat ->
             Config model
@@ -407,9 +441,11 @@ update msg (Config model data) =
                             (Maybe.map <| Set.updateRepeat repeat)
                             data.sets
                 }
+                |> saveToLocalStorage
 
         DeleteSet setPos ->
-            Config model <| Data.sanitizeSets { data | sets = Dict.remove setPos data.sets }
+            Config model (Data.sanitizeSets { data | sets = Dict.remove setPos data.sets })
+                |> saveToLocalStorage
 
         AddSet ->
             let
@@ -421,11 +457,12 @@ update msg (Config model data) =
                     | sets = Dict.insert newN (Set.init newN) data.sets
                     , setCounter = newN
                 }
+                |> saveToLocalStorage
 
         CopySet setPos ->
             case Dict.get setPos data.sets of
                 Nothing ->
-                    Config model data
+                    ( Config model data, Cmd.none )
 
                 Just setToCopy ->
                     let
@@ -447,17 +484,42 @@ update msg (Config model data) =
                             | sets = Dict.insert (setPos + 1) (Set.updatePosition (setPos + 1) setToCopy) newSets
                             , setCounter = Dict.size data.sets + 1
                         }
+                        |> saveToLocalStorage
 
         ToggleSetExpand setPos ->
-            Config model { data | sets = Dict.update setPos (Maybe.map Set.toggleExpand) data.sets }
+            ( Config model { data | sets = Dict.update setPos (Maybe.map Set.toggleExpand) data.sets }, Cmd.none )
 
         UpdateSetName setPos newName ->
             Config model { data | sets = Dict.update setPos (Maybe.map <| Set.updateName newName) data.sets }
+                |> saveToLocalStorage
 
         UpdateExerciseName setPos exercisePos newName ->
             Config model { data | sets = Dict.update setPos (Maybe.map <| Set.updateExerciseName exercisePos newName) data.sets }
+                |> saveToLocalStorage
+
+        ToLocalStorage ->
+            ( Config { model | saving = True } data, Ports.storeConfig (Data.encode data) )
+
+        StoreConfigSuccess ->
+            ( Config { model | saving = False } data, Cmd.none )
+
+
+
+-- helpers
+
+
+saveToLocalStorage : Config -> ( Config, Cmd Msg )
+saveToLocalStorage config =
+    update ToLocalStorage config
+
+
+
+---- SUBSCRIPTIONS ----
 
 
 subscriptions : Config -> Sub Msg
 subscriptions _ =
-    Browser.Events.onResize NewWindowSize
+    Sub.batch
+        [ Browser.Events.onResize NewWindowSize
+        , Ports.storeConfigSuccess <| always StoreConfigSuccess
+        ]

@@ -7,9 +7,6 @@ import Element exposing (Element)
 import Element.Font as Font
 import FeatherIcons as Icon
 import Html exposing (Html)
-import Ports
-import Process
-import Task
 import Util
 import View.Application as Application exposing (Application)
 import View.Config as Config exposing (Config)
@@ -105,53 +102,20 @@ settings model =
             |> Element.map ConfigMsg
 
         -- save settings; go to applications as well as save to localhost
-        , Element.row
-            [ Element.spacing 16
-            , Element.centerX
-            ]
-            [ Util.viewIcon
-                { icon = Icon.check
-                , color = Colours.grass
-                , size = 50
-                , msg = Just ToApplication
+        , Util.viewIcon
+            { icon = Icon.check
+            , color = Colours.grass
+            , size = 50
+            , msg = Just ToApplication
+            }
+            |> Util.withTooltip
+                { position = Util.Top
+                , content = "Finish editing"
                 }
-                |> Util.withTooltip
-                    { position = Util.Top
-                    , content = "Finish editing"
-                    }
-            , Util.viewIcon
-                { icon = Icon.save
-                , color = Colours.sky
-                , size = 50
-                , msg = Just ToLocalStorage
-                }
-                |> Element.el
-                    [ Element.onRight <|
-                        if model.showSavedCheck then
-                            Element.row
-                                [ Element.spacing 4
-                                , Element.padding 4
-                                , Element.centerY
-                                , Font.color Colours.grass
-                                , Font.light
-                                ]
-                                [ Util.viewIcon
-                                    { icon = Icon.check
-                                    , color = Colours.grass
-                                    , size = 20
-                                    , msg = Nothing
-                                    }
-                                , Element.text "Settings saved to Local Storage"
-                                ]
-
-                        else
-                            Element.none
-                    ]
-                |> Util.withTooltip
-                    { position = Util.Top
-                    , content = "Save configuration to Local Storage"
-                    }
-            ]
+            |> Element.el
+                [ Element.spacing 16
+                , Element.centerX
+                ]
         ]
 
 
@@ -203,9 +167,6 @@ type Msg
     | ApplicationMsg Application.Msg
     | ToApplication
     | ToSettings -- navigate to settings
-    | ToLocalStorage -- save to local storage
-    | StoreConfigSuccess -- when local storage succeeds
-    | RemoveSavedCheck
 
 
 
@@ -216,7 +177,11 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         ConfigMsg configMsg ->
-            ( { model | config = Config.update configMsg model.config }, Cmd.none )
+            let
+                ( newConfig, configCmd ) =
+                    Config.update configMsg model.config
+            in
+            ( { model | config = newConfig }, Cmd.map ConfigMsg configCmd )
 
         ApplicationMsg applicationMsg ->
             let
@@ -241,18 +206,6 @@ update msg model =
             , Cmd.none
             )
 
-        ToLocalStorage ->
-            ( model, Ports.storeConfig (Config.encode model.config) )
-
-        StoreConfigSuccess ->
-            ( { model | showSavedCheck = True }
-            , Process.sleep 2000
-                |> Task.perform (\_ -> RemoveSavedCheck)
-            )
-
-        RemoveSavedCheck ->
-            ( { model | showSavedCheck = False }, Cmd.none )
-
 
 
 -- helper functions for random crap
@@ -260,18 +213,11 @@ update msg model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    let
-        individuals =
-            case model.state of
-                Settings ->
-                    Config.subscriptions model.config
-                        |> Sub.map ConfigMsg
+    case model.state of
+        Settings ->
+            Config.subscriptions model.config
+                |> Sub.map ConfigMsg
 
-                Application ->
-                    Application.subscriptions model.application
-                        |> Sub.map ApplicationMsg
-    in
-    Sub.batch
-        [ individuals
-        , Ports.storeConfigSuccess <| always StoreConfigSuccess
-        ]
+        Application ->
+            Application.subscriptions model.application
+                |> Sub.map ApplicationMsg
