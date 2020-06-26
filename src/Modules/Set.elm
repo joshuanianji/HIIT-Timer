@@ -8,12 +8,13 @@ module Modules.Set exposing
     , init
     , newExercise
     , sanitizeExercises
+    , sanitizeRepeat
     , toggleExpand
     , totalTime
     , updateExerciseName
     , updateName
     , updatePosition
-    , updateRepeat
+    , updateRepeatInput
     , view
     )
 
@@ -25,6 +26,7 @@ import Dict exposing (Dict)
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
+import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
 import FeatherIcons as Icon
@@ -52,6 +54,8 @@ type alias Data =
     , exerciseCounter : Int
 
     -- how many times we repeat the set
+    -- also keep track of the string so we can have an empty string possibility
+    , repeatString : String
     , repeat : Int
 
     -- same things as exercise data
@@ -80,9 +84,10 @@ type alias Options msg =
     -- copies the set and places the copy right below it
     , onCopy : Int -> msg
 
-    -- updates how may times the set will repeat
-    -- first is the set position
-    , onUpdateRepeat : Int -> Int -> msg
+    -- updates how may times the set will repeat, carrying the set position
+    -- also sanitizes when we lost focus ("" => 0)
+    , onUpdateRepeat : Int -> String -> msg
+    , sanitizeRepeat : Int -> msg
 
     -- int is the position again
     , toggleExpand : Int -> msg
@@ -112,6 +117,7 @@ init n =
     Set
         { exercises = exercises
         , exerciseCounter = 4
+        , repeatString = "2"
         , repeat = 2
         , position = n
         , name = "Set " ++ String.fromInt n
@@ -254,13 +260,12 @@ view options (Set data) =
                     Input.text
                         [ Font.light
                         , Element.htmlAttribute <| Html.Attributes.type_ "number"
+
+                        -- here we "sanitize" the repeats by making an empty string worth 0
+                        , Events.onLoseFocus <| options.sanitizeRepeat data.position
                         ]
-                        { onChange =
-                            String.filter Char.isDigit
-                                >> String.toInt
-                                >> Maybe.withDefault 0
-                                >> options.onUpdateRepeat data.position
-                        , text = String.fromInt data.repeat
+                        { onChange = options.onUpdateRepeat data.position
+                        , text = data.repeatString
                         , placeholder = Nothing
                         , label = Input.labelHidden "Number of Repeats:"
                         }
@@ -531,9 +536,23 @@ deleteExercise position (Set data) =
     Set { data | exercises = Dict.remove position data.exercises }
 
 
-updateRepeat : Int -> Set -> Set
-updateRepeat newRepeat (Set data) =
-    Set { data | repeat = newRepeat }
+updateRepeatInput : String -> Set -> Set
+updateRepeatInput newRepeatString (Set data) =
+    Set { data | repeatString = newRepeatString }
+
+
+sanitizeRepeat : Set -> Set
+sanitizeRepeat (Set data) =
+    let
+        repeats =
+            String.toInt data.repeatString
+                |> Maybe.withDefault 0
+    in
+    Set
+        { data
+            | repeatString = String.fromInt repeats
+            , repeat = repeats
+        }
 
 
 toggleExpand : Set -> Set

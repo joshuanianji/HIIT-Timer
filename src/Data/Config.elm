@@ -58,6 +58,7 @@ fromLocalStorage lsConfig =
             Set.fromData
                 { exercises = Dict.map (always Exercise.fromData) set.exercises
                 , exerciseCounter = set.exerciseCounter
+                , repeatString = String.fromInt set.repeat
                 , repeat = set.repeat
                 , position = set.position
                 , name = set.name

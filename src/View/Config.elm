@@ -282,6 +282,7 @@ view (Config model data) =
                             , onDeleteExercise = DeleteElement
                             , onDelete = DeleteSet
                             , onUpdateRepeat = NewSetRepeat
+                            , sanitizeRepeat = SanitizeRepeat
                             , onCopy = CopySet
                             , toggleExpand = ToggleSetExpand
                             , updateName = UpdateSetName
@@ -349,7 +350,8 @@ type Msg
     | UpdateFocus Input Bool
     | NewElement Int
     | DeleteElement Int Int
-    | NewSetRepeat Int Int
+    | NewSetRepeat Int String
+    | SanitizeRepeat Int
     | DeleteSet Int
     | AddSet
     | CopySet Int
@@ -433,13 +435,22 @@ update msg (Config model data) =
                 |> saveToLocalStorage
 
         NewSetRepeat setPos repeat ->
-            Config model
+            ( Config model
                 { data
                     | sets =
                         Dict.update
                             setPos
-                            (Maybe.map <| Set.updateRepeat repeat)
+                            (Maybe.map <| Set.updateRepeatInput repeat)
                             data.sets
+                }
+            , Cmd.none
+            )
+
+        SanitizeRepeat setPos ->
+            Config model
+                { data
+                    | sets =
+                        Dict.update setPos (Maybe.map Set.sanitizeRepeat) data.sets
                 }
                 |> saveToLocalStorage
 
