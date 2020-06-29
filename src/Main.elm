@@ -135,41 +135,85 @@ settings model =
 
 application : Model -> Element Msg
 application model =
-    Element.column
-        [ Element.width Element.fill
-        , Element.height Element.fill
-        , Element.padding 16
-        ]
-        [ Application.view model.application
-            |> Element.map ApplicationMsg
-        , if Application.exercising model.application then
-            Util.viewIcon
-                { icon = Icon.x
-                , color = Colours.sunset
-                , size = 40
-                , msg = Just ToSettings
-                }
-                |> Util.withTooltip
-                    { position = Util.Top
-                    , content = "Exit the workout"
-                    }
-                |> Element.el
-                    [ Element.centerX
-                    , Element.alignBottom
-                    ]
+    let
+        applicationView =
+            Application.view model.application
+                |> Element.map ApplicationMsg
 
-          else
-            Util.viewIcon
-                { icon = Icon.settings
-                , color = Colours.sky
-                , size = 40
-                , msg = Just ToSettings
-                }
-                |> Element.el
-                    [ Element.centerX
-                    , Element.alignBottom
+        phoneView =
+            Element.column
+                [ Element.width Element.fill
+                , Element.height Element.fill
+                ]
+                [ -- "nav bar"
+                  Element.row
+                    [ Element.width Element.fill
+                    , Element.padding 8
+                    , Element.inFront <|
+                        Element.el
+                            [ Element.alignRight
+                            , Element.padding 16
+                            ]
+                        <|
+                            Util.viewIcon
+                                { icon = Icon.x
+                                , color = Colours.sunset
+                                , size = 30
+                                , msg = Just ToSettings
+                                }
                     ]
-        ]
+                    [ Element.el [ Element.centerX ] <|
+                        Util.viewIcon
+                            { icon = Icon.zap
+                            , color = Colours.sunset
+                            , size = 45
+                            , msg = Nothing
+                            }
+                    ]
+                , applicationView
+                ]
+
+        desktopView =
+            Element.column
+                [ Element.width Element.fill
+                , Element.height Element.fill
+                , Element.padding 16
+                ]
+                [ applicationView
+                , if Application.exercising model.application then
+                    Util.viewIcon
+                        { icon = Icon.x
+                        , color = Colours.sunset
+                        , size = 40
+                        , msg = Just ToSettings
+                        }
+                        |> Util.withTooltip
+                            { position = Util.Top
+                            , content = "Exit the workout"
+                            }
+                        |> Element.el
+                            [ Element.centerX
+                            , Element.alignBottom
+                            ]
+
+                  else
+                    Util.viewIcon
+                        { icon = Icon.settings
+                        , color = Colours.sky
+                        , size = 40
+                        , msg = Just ToSettings
+                        }
+                        |> Element.el
+                            [ Element.centerX
+                            , Element.alignBottom
+                            ]
+                ]
+    in
+    if Util.isVerticalPhone (Element.classifyDevice model.windowSize) then
+        phoneView
+
+    else
+        desktopView
 
 
 
