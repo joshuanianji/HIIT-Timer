@@ -1,8 +1,9 @@
 module Main exposing (main)
 
 import Browser
+import Browser.Events
 import Colours
-import Data.Flags exposing (Flags, WindowSize)
+import Data.Flags as Flags exposing (Flags, WindowSize)
 import Element exposing (Element)
 import Element.Font as Font
 import FeatherIcons as Icon
@@ -57,7 +58,7 @@ init flags =
             Config.init flags
     in
     ( { windowSize = flags.windowSize
-      , state = Settings
+      , state = Application
       , config = config
       , application = Application.init (Config.getData config) flags
       , showSavedCheck = False
@@ -121,6 +122,7 @@ settings model =
             , color = Colours.grass
             , size = 50
             , msg = Just ToApplication
+            , withBorder = True
             }
             |> Util.withTooltip
                 { position = Util.Top
@@ -160,6 +162,7 @@ application model =
                                 , color = Colours.sunset
                                 , size = 30
                                 , msg = Just ToSettings
+                                , withBorder = False
                                 }
                     ]
                     [ Element.el [ Element.centerX ] <|
@@ -168,6 +171,7 @@ application model =
                             , color = Colours.sunset
                             , size = 45
                             , msg = Nothing
+                            , withBorder = False
                             }
                     ]
                 , applicationView
@@ -179,13 +183,23 @@ application model =
                 , Element.height Element.fill
                 , Element.padding 16
                 ]
-                [ applicationView
+                [ -- zap icon at the top
+                  Util.viewIcon
+                    { icon = Icon.zap
+                    , color = Colours.sunset
+                    , size = 50
+                    , msg = Nothing
+                    , withBorder = False
+                    }
+                    |> Element.el [ Element.centerX ]
+                , applicationView
                 , if Application.exercising model.application then
                     Util.viewIcon
                         { icon = Icon.x
                         , color = Colours.sunset
                         , size = 40
                         , msg = Just ToSettings
+                        , withBorder = True
                         }
                         |> Util.withTooltip
                             { position = Util.Top
@@ -202,6 +216,7 @@ application model =
                         , color = Colours.sky
                         , size = 40
                         , msg = Just ToSettings
+                        , withBorder = True
                         }
                         |> Element.el
                             [ Element.centerX
@@ -221,7 +236,8 @@ application model =
 
 
 type Msg
-    = ConfigMsg Config.Msg
+    = NewWindowSize Int Int
+    | ConfigMsg Config.Msg
     | ApplicationMsg Application.Msg
     | ToApplication
     | ToSettings -- navigate to settings
@@ -234,6 +250,11 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        NewWindowSize width height ->
+            ( { model | windowSize = Flags.WindowSize width height }
+            , Cmd.none
+            )
+
         ConfigMsg configMsg ->
             let
                 ( newConfig, configCmd ) =
@@ -271,11 +292,18 @@ update msg model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    case model.state of
-        Settings ->
-            Config.subscriptions model.config
-                |> Sub.map ConfigMsg
+    let
+        specifics =
+            case model.state of
+                Settings ->
+                    Config.subscriptions model.config
+                        |> Sub.map ConfigMsg
 
-        Application ->
-            Application.subscriptions model.application
-                |> Sub.map ApplicationMsg
+                Application ->
+                    Application.subscriptions model.application
+                        |> Sub.map ApplicationMsg
+    in
+    Sub.batch
+        [ specifics
+        , Browser.Events.onResize NewWindowSize
+        ]

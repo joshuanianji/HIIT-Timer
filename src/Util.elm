@@ -1,5 +1,6 @@
 module Util exposing
     ( Position(..)
+    , centerOverlay
     , isVerticalPhone
     , surround
     , viewIcon
@@ -29,7 +30,14 @@ surround left middle right =
             ]
 
 
-viewIcon : { icon : Icon.Icon, color : Element.Color, size : Float, msg : Maybe msg } -> Element msg
+viewIcon :
+    { icon : Icon.Icon
+    , color : Element.Color
+    , size : Float
+    , msg : Maybe msg
+    , withBorder : Bool
+    }
+    -> Element msg
 viewIcon data =
     let
         icon =
@@ -44,6 +52,20 @@ viewIcon data =
             , Element.padding (round data.size // 4)
             , Border.rounded (round data.size)
             ]
+                ++ -- border stuff
+                   (if data.withBorder then
+                        [ Element.pointer
+                        , Border.width 1
+                        , Border.color data.color
+                        , Element.mouseOver
+                            [ Font.color Colours.white
+                            , Background.color data.color
+                            ]
+                        ]
+
+                    else
+                        []
+                   )
     in
     case data.msg of
         -- don't make it interactive
@@ -52,17 +74,7 @@ viewIcon data =
 
         Just msg ->
             Element.el
-                ([ Element.pointer
-                 , Border.width 1
-                 , Border.color data.color
-                 , Element.mouseOver
-                    [ Font.color Colours.white
-                    , Background.color data.color
-                    ]
-                 , Events.onClick msg
-                 ]
-                    ++ similarAttrs
-                )
+                (Events.onClick msg :: similarAttrs)
                 icon
 
 
@@ -88,6 +100,12 @@ withTooltip { position, content } =
         , Element.htmlAttribute <| Html.Attributes.class (positionToClass position)
         , Element.htmlAttribute <| Html.Attributes.attribute "data-tooltip" content
         ]
+
+
+centerOverlay : Element msg -> Element.Attribute msg
+centerOverlay =
+    Element.el [ Element.centerY, Element.centerX ]
+        >> Element.inFront
 
 
 type Position

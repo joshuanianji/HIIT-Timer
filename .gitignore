@@ -7,4 +7,5 @@ elmapp.config.js
 
 # other stuff 
 .DS_Store
+elm-analyse.json
 src/View/hiit-timer-release-workflow.code-workspace

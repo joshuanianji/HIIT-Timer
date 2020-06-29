@@ -124,6 +124,7 @@ view options (Exercise data) =
             , color = Colours.sunset
             , size = 25
             , msg = Just (options.onDelete data.position)
+            , withBorder = True
             }
             |> Element.el
                 [ Element.alignRight

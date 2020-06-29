@@ -23,7 +23,7 @@ type alias Data =
 
 type AppState
     = Starting (Nonempty TimeBlock) -- the exercises to hold on to lol
-    | InProgress (Nonempty TimeBlock)
+    | InProgress Int (Nonempty TimeBlock) -- int is the total number of timeblocks that we keep constant. this helps create the "dotted timeline" in the mobile version
     | NeverStarted
     | Finished
 
