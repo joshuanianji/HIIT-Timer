@@ -417,45 +417,20 @@ update msg (Config model data) =
                 |> saveToLocalStorage
 
         NewElement setPos ->
-            Config model
-                { data
-                    | sets =
-                        Dict.update
-                            setPos
-                            (Maybe.map Set.newExercise)
-                            data.sets
-                }
+            Config model (updateSetDictionary data setPos Set.newExercise)
                 |> saveToLocalStorage
 
         DeleteElement setPos elemPos ->
-            Config model
-                { data
-                    | sets =
-                        Dict.update
-                            setPos
-                            (Maybe.map <| (Set.deleteExercise elemPos >> Set.sanitizeExercises))
-                            data.sets
-                }
+            Config model (updateSetDictionary data setPos (Set.deleteExercise elemPos >> Set.sanitizeExercises))
                 |> saveToLocalStorage
 
         NewSetRepeat setPos repeat ->
-            ( Config model
-                { data
-                    | sets =
-                        Dict.update
-                            setPos
-                            (Maybe.map <| Set.updateRepeatInput repeat)
-                            data.sets
-                }
+            ( Config model (updateSetDictionary data setPos <| Set.updateRepeatInput repeat)
             , Cmd.none
             )
 
         SanitizeRepeat setPos ->
-            Config model
-                { data
-                    | sets =
-                        Dict.update setPos (Maybe.map Set.sanitizeRepeat) data.sets
-                }
+            Config model (updateSetDictionary data setPos Set.sanitizeRepeat)
                 |> saveToLocalStorage
 
         DeleteSet setPos ->
@@ -502,14 +477,14 @@ update msg (Config model data) =
                         |> saveToLocalStorage
 
         ToggleSetExpand setPos ->
-            ( Config model { data | sets = Dict.update setPos (Maybe.map Set.toggleExpand) data.sets }, Cmd.none )
+            ( Config model (updateSetDictionary data setPos Set.toggleExpand), Cmd.none )
 
         UpdateSetName setPos newName ->
-            Config model { data | sets = Dict.update setPos (Maybe.map <| Set.updateName newName) data.sets }
+            Config model (updateSetDictionary data setPos <| Set.updateName newName)
                 |> saveToLocalStorage
 
         UpdateExerciseName setPos exercisePos newName ->
-            Config model { data | sets = Dict.update setPos (Maybe.map <| Set.updateExerciseName exercisePos newName) data.sets }
+            Config model (updateSetDictionary data setPos <| Set.updateExerciseName exercisePos newName)
                 |> saveToLocalStorage
 
         ToLocalStorage ->
@@ -521,6 +496,17 @@ update msg (Config model data) =
 
 
 -- helpers
+
+
+updateSetDictionary : Data.Data -> Int -> (Set.Set -> Set.Set) -> Data.Data
+updateSetDictionary data setPos f =
+    { data
+        | sets =
+            Dict.update
+                setPos
+                (Maybe.map f)
+                data.sets
+    }
 
 
 saveToLocalStorage : Config -> ( Config, Cmd Msg )
