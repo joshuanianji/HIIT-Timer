@@ -44,6 +44,7 @@ type Application
 type alias Model =
     { keys : List Key -- keys pressed down
     , smhSrc : String
+    , screenDimensions : Flags.WindowSize
     , device : Element.Device
     }
 
@@ -58,6 +59,7 @@ init data flags =
         |> Application
             { keys = []
             , smhSrc = flags.smhSrc
+            , screenDimensions = flags.windowSize
             , device = Element.classifyDevice flags.windowSize
             }
 
@@ -252,7 +254,7 @@ view (Application model data) =
 
                     viewRemainingTime =
                         Element.el
-                            [ Font.size 72
+                            [ Font.size <| model.screenDimensions.height // 8
                             , Font.color themeColor
                             , Font.bold
                             ]
@@ -618,7 +620,18 @@ update : Msg -> Application -> ( Application, Cmd Msg )
 update msg (Application model data) =
     case msg of
         NewWindowSize width height ->
-            ( Application { model | device = Element.classifyDevice <| Flags.WindowSize width height } data, Cmd.none )
+            let
+                newWindowSize =
+                    Flags.WindowSize width height
+            in
+            ( Application
+                { model
+                    | screenDimensions = newWindowSize
+                    , device = Element.classifyDevice newWindowSize
+                }
+                data
+            , Cmd.none
+            )
 
         StartExercise blocks ->
             ( Application model
