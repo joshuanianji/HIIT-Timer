@@ -276,6 +276,7 @@ view options (Set data) =
                         , color = Colours.sky
                         , size = 25
                         , msg = Nothing
+                        , withBorder = False
                         }
             in
             if Util.isVerticalPhone options.device then
@@ -370,6 +371,7 @@ view options (Set data) =
                 , color = Colours.sunset
                 , size = 25
                 , msg = Just <| options.onDelete data.position
+                , withBorder = True
                 }
 
         copySetIcon =
@@ -378,6 +380,7 @@ view options (Set data) =
                 , color = Colours.sky
                 , size = 25
                 , msg = Just <| options.onCopy data.position
+                , withBorder = True
                 }
     in
     Element.column
@@ -465,6 +468,7 @@ view options (Set data) =
                         , color = Colours.sunset
                         , size = 30
                         , msg = Just <| options.onNewExercise data.position
+                        , withBorder = True
                         }
                         |> Element.el
                             [ Element.alignBottom
@@ -488,6 +492,7 @@ view options (Set data) =
             , color = Colours.sunflower
             , size = 25
             , msg = Just <| options.toggleExpand data.position
+            , withBorder = True
             }
             |> Util.withTooltip
                 { position = Util.Top
@@ -546,7 +551,7 @@ sanitizeRepeat (Set data) =
     let
         repeats =
             String.toInt data.repeatString
-                |> Maybe.withDefault 0
+                |> Maybe.withDefault 1
     in
     Set
         { data

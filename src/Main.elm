@@ -1,8 +1,9 @@
 module Main exposing (main)
 
 import Browser
+import Browser.Events
 import Colours
-import Data.Flags exposing (Flags, WindowSize)
+import Data.Flags as Flags exposing (Flags, WindowSize)
 import Element exposing (Element)
 import Element.Font as Font
 import FeatherIcons as Icon
@@ -57,7 +58,7 @@ init flags =
             Config.init flags
     in
     ( { windowSize = flags.windowSize
-      , state = Settings
+      , state = Application
       , config = config
       , application = Application.init (Config.getData config) flags
       , showSavedCheck = False
@@ -121,6 +122,7 @@ settings model =
             , color = Colours.grass
             , size = 50
             , msg = Just ToApplication
+            , withBorder = True
             }
             |> Util.withTooltip
                 { position = Util.Top
@@ -135,41 +137,98 @@ settings model =
 
 application : Model -> Element Msg
 application model =
-    Element.column
-        [ Element.width Element.fill
-        , Element.height Element.fill
-        , Element.padding 16
-        ]
-        [ Application.view model.application
-            |> Element.map ApplicationMsg
-        , if Application.exercising model.application then
-            Util.viewIcon
-                { icon = Icon.x
-                , color = Colours.sunset
-                , size = 40
-                , msg = Just ToSettings
-                }
-                |> Util.withTooltip
-                    { position = Util.Top
-                    , content = "Exit the workout"
-                    }
-                |> Element.el
-                    [ Element.centerX
-                    , Element.alignBottom
-                    ]
+    let
+        applicationView =
+            Application.view model.application
+                |> Element.map ApplicationMsg
 
-          else
-            Util.viewIcon
-                { icon = Icon.settings
-                , color = Colours.sky
-                , size = 40
-                , msg = Just ToSettings
-                }
-                |> Element.el
-                    [ Element.centerX
-                    , Element.alignBottom
+        phoneView =
+            Element.column
+                [ Element.width Element.fill
+                , Element.height Element.fill
+                ]
+                [ -- "nav bar"
+                  Element.row
+                    [ Element.width Element.fill
+                    , Element.padding 8
+                    , Element.inFront <|
+                        Element.el
+                            [ Element.alignRight
+                            , Element.padding 16
+                            ]
+                        <|
+                            Util.viewIcon
+                                { icon = Icon.x
+                                , color = Colours.sunset
+                                , size = 30
+                                , msg = Just ToSettings
+                                , withBorder = False
+                                }
                     ]
-        ]
+                    [ Element.el [ Element.centerX ] <|
+                        Util.viewIcon
+                            { icon = Icon.zap
+                            , color = Colours.sunset
+                            , size = 45
+                            , msg = Nothing
+                            , withBorder = False
+                            }
+                    ]
+                , applicationView
+                ]
+
+        desktopView =
+            Element.column
+                [ Element.width Element.fill
+                , Element.height Element.fill
+                , Element.padding 16
+                ]
+                [ -- zap icon at the top
+                  Util.viewIcon
+                    { icon = Icon.zap
+                    , color = Colours.sunset
+                    , size = 50
+                    , msg = Nothing
+                    , withBorder = False
+                    }
+                    |> Element.el [ Element.centerX ]
+                , applicationView
+                , if Application.exercising model.application then
+                    Util.viewIcon
+                        { icon = Icon.x
+                        , color = Colours.sunset
+                        , size = 40
+                        , msg = Just ToSettings
+                        , withBorder = True
+                        }
+                        |> Util.withTooltip
+                            { position = Util.Top
+                            , content = "Exit the workout"
+                            }
+                        |> Element.el
+                            [ Element.centerX
+                            , Element.alignBottom
+                            ]
+
+                  else
+                    Util.viewIcon
+                        { icon = Icon.settings
+                        , color = Colours.sky
+                        , size = 40
+                        , msg = Just ToSettings
+                        , withBorder = True
+                        }
+                        |> Element.el
+                            [ Element.centerX
+                            , Element.alignBottom
+                            ]
+                ]
+    in
+    if Util.isVerticalPhone (Element.classifyDevice model.windowSize) then
+        phoneView
+
+    else
+        desktopView
 
 
 
@@ -177,7 +236,8 @@ application model =
 
 
 type Msg
-    = ConfigMsg Config.Msg
+    = NewWindowSize Int Int
+    | ConfigMsg Config.Msg
     | ApplicationMsg Application.Msg
     | ToApplication
     | ToSettings -- navigate to settings
@@ -190,6 +250,11 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        NewWindowSize width height ->
+            ( { model | windowSize = Flags.WindowSize width height }
+            , Cmd.none
+            )
+
         ConfigMsg configMsg ->
             let
                 ( newConfig, configCmd ) =
@@ -227,11 +292,18 @@ update msg model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    case model.state of
-        Settings ->
-            Config.subscriptions model.config
-                |> Sub.map ConfigMsg
+    let
+        specifics =
+            case model.state of
+                Settings ->
+                    Config.subscriptions model.config
+                        |> Sub.map ConfigMsg
 
-        Application ->
-            Application.subscriptions model.application
-                |> Sub.map ApplicationMsg
+                Application ->
+                    Application.subscriptions model.application
+                        |> Sub.map ApplicationMsg
+    in
+    Sub.batch
+        [ specifics
+        , Browser.Events.onResize NewWindowSize
+        ]

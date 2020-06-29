@@ -17,7 +17,10 @@ import Data.Config
 import Data.Flags as Flags exposing (Flags)
 import Element exposing (Element)
 import Element.Background as Background
+import Element.Border as Border
+import Element.Events as Events
 import Element.Font as Font
+import Element.Input as Input
 import FeatherIcons as Icon
 import Keyboard exposing (Key)
 import List.Nonempty exposing (Nonempty(..))
@@ -41,6 +44,7 @@ type Application
 type alias Model =
     { keys : List Key -- keys pressed down
     , smhSrc : String
+    , screenDimensions : Flags.WindowSize
     , device : Element.Device
     }
 
@@ -55,6 +59,7 @@ init data flags =
         |> Application
             { keys = []
             , smhSrc = flags.smhSrc
+            , screenDimensions = flags.windowSize
             , device = Element.classifyDevice flags.windowSize
             }
 
@@ -76,7 +81,7 @@ updateData data (Application model _) =
 exercising : Application -> Bool
 exercising (Application _ data) =
     case data.state of
-        Data.InProgress _ ->
+        Data.InProgress _ _ ->
             True
 
         _ ->
@@ -103,22 +108,63 @@ endWorkout (Application model _) =
 
 view : Application -> Element Msg
 view (Application model data) =
-    Element.column
-        [ Element.width Element.fill
-        , Element.height Element.fill
-        ]
-        [ Util.viewIcon
-            { icon = Icon.zap
-            , color = Colours.sunset
-            , size = 50
-            , msg = Nothing
-            }
-            |> Element.el [ Element.centerX ]
+    case data.state of
+        Data.Starting blocks ->
+            let
+                title =
+                    Element.paragraph
+                        [ Font.size 50
+                        , Font.center
+                        , Font.color Colours.sunset
+                        ]
+                        [ Element.text "Ready?"
+                        ]
 
-        -- the main view
-        , case data.state of
-            Data.Starting blocks ->
-                -- I have to use Element.inFront to ensure that both the upper and lower blocks are the SAME height
+                startExerciseButton =
+                    Util.viewIcon
+                        { icon = Icon.play
+                        , color = Colours.sunset
+                        , size = 75
+                        , msg = Just <| StartExercise blocks
+                        , withBorder = True
+                        }
+
+                subTitle =
+                    Element.paragraph
+                        [ Font.color Colours.sunset
+                        , Font.size 20
+                        , Font.center
+                        , Font.light
+                        ]
+                        [ Element.el [ Font.bold ] <| Element.text "Note:"
+                        , Element.text " if you press play, you "
+                        , Element.el [ Font.bold ] <| Element.text "cannot"
+                        , Element.text " go back to the settings page without resetting your workout!"
+                        ]
+            in
+            -- I have to use Util.centerOverlay to ensure that both the upper and lower blocks are the SAME height
+            if Util.isVerticalPhone model.device then
+                Element.column
+                    [ Element.width Element.fill
+                    , Element.height Element.fill
+                    , Element.padding 16
+                    ]
+                    [ Element.el
+                        [ Element.height Element.fill
+                        , Element.width Element.fill
+                        , Util.centerOverlay title
+                        ]
+                        Element.none
+                    , Element.el [ Element.centerX ] startExerciseButton
+                    , Element.el
+                        [ Element.height Element.fill
+                        , Element.width Element.fill
+                        , Util.centerOverlay subTitle
+                        ]
+                        Element.none
+                    ]
+
+            else
                 Element.column
                     [ Element.width Element.fill
                     , Element.height Element.fill
@@ -129,50 +175,210 @@ view (Application model data) =
                         , Element.below <|
                             Element.el
                                 [ Element.centerX
-                                , Element.moveUp 56
+                                , Element.alignBottom
+                                , Element.moveUp 60
                                 , Element.padding 4
                                 ]
-                            <|
-                                Util.viewIcon
-                                    { icon = Icon.play
-                                    , color = Colours.sunset
-                                    , size = 75
-                                    , msg = Just <| StartExercise blocks
-                                    }
-                        , Element.inFront <|
-                            Element.paragraph
-                                [ Element.centerX
-                                , Element.centerY
-                                , Font.size 50
-                                , Font.center
-                                , Font.color Colours.sunset
-                                ]
-                                [ Element.text "Ready?"
-                                ]
+                                startExerciseButton
+                        , Util.centerOverlay title
                         ]
                         Element.none
                     , Element.el
                         [ Element.width Element.fill
                         , Element.height Element.fill
-                        , Element.inFront <|
-                            Element.paragraph
-                                [ Element.centerX
-                                , Element.centerY
-                                , Font.color Colours.sunset
-                                , Font.size 20
-                                , Font.center
-                                , Font.light
-                                ]
-                                [ Element.el [ Font.bold ] <| Element.text "Note:"
-                                , Element.text " if you press play, you "
-                                , Element.el [ Font.bold ] <| Element.text "cannot"
-                                , Element.text " go back to the settings page without resetting your workout!"
-                                ]
+                        , Util.centerOverlay subTitle
                         ]
                         Element.none
                     ]
 
-            Data.InProgress blocks ->
+        Data.InProgress totalBlockCount blocks ->
+            let
+                playPauseIcon =
+                    if data.playing then
+                        Icon.pause
+
+                    else
+                        Icon.play
+            in
+            -- TODO: REFACTOR TO REDUCE THE AMOUNT OF SIMILAR CODE
+            if Util.isVerticalPhone model.device then
+                let
+                    bigFont size color label =
+                        Element.paragraph
+                            [ Element.centerX
+                            , Font.size size
+                            , Font.center
+                            , Font.color color
+                            , Font.light
+                            ]
+                            [ Element.text label ]
+
+                    ( currBlockelem, themeColor, remainingTime ) =
+                        case List.Nonempty.head blocks of
+                            Data.CountDown secsLeft _ ->
+                                ( bigFont 32 Colours.sky "Countdown", Colours.sky, secsLeft )
+
+                            Data.ExerciseBreak secsLeft _ ->
+                                ( bigFont 32 Colours.grass "Break Between Exercises", Colours.grass, secsLeft )
+
+                            Data.SetBreak secsLeft _ ->
+                                ( bigFont 32 Colours.grass "Break Between Sets", Colours.grass, secsLeft )
+
+                            Data.Exercise { setName, name, duration, secsLeft } ->
+                                ( Element.column
+                                    [ Element.centerX
+                                    , Element.spacing 4
+                                    , Font.center
+                                    , Font.color Colours.sky
+                                    ]
+                                    [ bigFont 32 Colours.sunflower setName
+                                    , bigFont 48 Colours.sunset name
+                                    ]
+                                , Colours.sunset
+                                , secsLeft
+                                )
+
+                    nextupString =
+                        case List.head <| List.Nonempty.tail blocks of
+                            Just (Data.ExerciseBreak _ _) ->
+                                "Break"
+
+                            Just (Data.SetBreak _ _) ->
+                                "Break"
+
+                            Just (Data.Exercise d) ->
+                                d.name
+
+                            _ ->
+                                "Workout Completion"
+
+                    viewRemainingTime =
+                        Element.el
+                            [ Font.size <| model.screenDimensions.height // 8
+                            , Font.color themeColor
+                            , Font.bold
+                            ]
+                        <|
+                            Element.text (String.fromInt remainingTime)
+
+                    bottomElems =
+                        Element.column
+                            [ Element.width Element.fill
+                            , Element.height Element.fill
+                            , Element.spaceEvenly
+                            ]
+                            [ Element.el
+                                [ Element.width Element.fill
+                                , Element.height (Element.px 1)
+                                ]
+                                Element.none
+                            , -- play/pause toggle
+                              Input.button
+                                [ Element.width (Element.maximum 150 Element.fill)
+                                , Element.height Element.shrink
+                                , Element.centerX
+                                , Border.rounded 15
+                                , Background.color Colours.sky
+                                ]
+                                { onPress = Just TogglePlay
+                                , label =
+                                    Element.el
+                                        [ Element.centerX
+                                        , Element.padding 8
+                                        ]
+                                    <|
+                                        Util.viewIcon
+                                            { icon = playPauseIcon
+                                            , color = Colours.white
+                                            , size = 30
+                                            , msg = Nothing
+                                            , withBorder = False
+                                            }
+                                }
+
+                            -- next up
+                            , Element.paragraph
+                                [ Element.height Element.shrink
+                                , Font.center
+                                , Font.size 20
+                                , Font.light
+                                , Font.color Colours.sky
+                                ]
+                                [ Element.text "Next up: "
+                                , Element.text nextupString
+                                ]
+
+                            -- instagram-like timeline thing
+                            , let
+                                currExerciseNum =
+                                    List.Nonempty.length blocks
+
+                                viewPebble n =
+                                    let
+                                        ( pebbleHeight, pebbleColour ) =
+                                            if n == currExerciseNum then
+                                                -- this pebble represents the current exercise
+                                                ( 9, themeColor )
+
+                                            else if n > currExerciseNum then
+                                                ( 5, Colours.lightGray )
+
+                                            else
+                                                ( 5, Colours.withAlpha 0.6 Colours.sky )
+                                    in
+                                    Element.el
+                                        [ Element.width Element.fill
+                                        , Element.centerY
+                                        , Element.height (Element.px pebbleHeight)
+                                        , Border.rounded 3
+                                        , Background.color pebbleColour
+                                        ]
+                                        Element.none
+                              in
+                              List.range 1 totalBlockCount
+                                |> List.reverse
+                                |> List.map viewPebble
+                                |> Element.row
+                                    [ Element.spacing 2
+                                    , Element.width Element.fill
+                                    ]
+                            , Element.el
+                                [ Element.width Element.fill
+                                , Element.height (Element.px 1)
+                                ]
+                                Element.none
+                            ]
+                in
+                Element.column
+                    [ Element.width Element.fill
+                    , Element.height Element.fill
+                    , Element.padding 16
+                    ]
+                    [ -- current exercise
+                      Element.el
+                        [ Element.width Element.fill
+                        , Element.height <| Element.fillPortion 2
+                        , Util.centerOverlay currBlockelem
+                        ]
+                        Element.none
+
+                    -- next exercise
+                    , Element.el
+                        [ Element.width Element.fill
+                        , Element.height <| Element.fillPortion 3
+                        , Util.centerOverlay viewRemainingTime
+                        ]
+                        Element.none
+
+                    -- bottom pause bar and dots
+                    , Element.el
+                        [ Element.width Element.fill
+                        , Element.height <| Element.fillPortion 2
+                        ]
+                        bottomElems
+                    ]
+
+            else
                 let
                     bigFont size color label =
                         Element.el
@@ -273,13 +479,6 @@ view (Application model data) =
                             [ Element.text "Next up: "
                             , Element.text nextupString
                             ]
-
-                    centerButtonIcon =
-                        if data.playing then
-                            Icon.pause
-
-                        else
-                            Icon.play
                 in
                 Element.column
                     [ Element.width Element.fill
@@ -291,10 +490,11 @@ view (Application model data) =
                         , Element.height Element.fill
                         , Element.below
                             (Util.viewIcon
-                                { icon = centerButtonIcon
+                                { icon = playPauseIcon
                                 , color = dataGroup.theme
                                 , size = 75
                                 , msg = Just TogglePlay
+                                , withBorder = True
                                 }
                                 |> Element.el
                                     [ Element.centerX
@@ -336,72 +536,70 @@ view (Application model data) =
                         Element.none
                     ]
 
-            Data.Finished ->
-                Element.column
-                    [ Element.width Element.fill
-                    , Element.centerY
-                    , Element.spacing 32
+        Data.Finished ->
+            Element.column
+                [ Element.width Element.fill
+                , Element.centerY
+                , Element.spacing 32
+                ]
+                [ Util.viewIcon
+                    { icon = Icon.star
+                    , color = Colours.sunflower
+                    , size = 100
+                    , msg = Nothing
+                    , withBorder = False
+                    }
+                    |> Element.el
+                        [ Element.centerX ]
+                , Element.paragraph
+                    [ Font.color Colours.sunflower
+                    , Font.center
+                    , Font.light
+                    , Font.size 50
                     ]
-                    [ Util.viewIcon
-                        { icon = Icon.star
-                        , color = Colours.sunflower
-                        , size = 100
-                        , msg = Nothing
-                        }
-                        |> Element.el
-                            [ Element.centerX ]
-                    , Element.paragraph
-                        [ Font.color Colours.sunflower
-                        , Font.center
-                        , Font.light
-                        , Font.size 50
-                        ]
-                        [ Element.text "WOOHOO!" ]
-                    , Element.paragraph
-                        [ Font.color Colours.sunflower
-                        , Font.center
-                        , Font.light
-                        ]
-                        [ Element.text "Congratulations! You finished!" ]
+                    [ Element.text "WOOHOO!" ]
+                , Element.paragraph
+                    [ Font.color Colours.sunflower
+                    , Font.center
+                    , Font.light
                     ]
+                    [ Element.text "Congratulations! You finished!" ]
+                ]
 
-            Data.NeverStarted ->
-            -- the smh screen
-                Element.column
-                    [ Element.width Element.fill
-                    , Element.centerY
-                    , Element.spacing 32
-                    ]
-                    [ Element.image
-                        [ Element.width (Element.px 125)
-                        , Element.centerX
-                        ]
-                        { src = model.smhSrc
-                        , description = "Sokka is disappointed in your workout"
-                        }
-                    , Element.paragraph
-                        [ Font.color Colours.sunset
-                        , Font.center
-                        , Font.light
-                        , Font.size 50
-                        ]
-                        [ Element.text "Disappointed." ]
-                    , Element.textColumn
-                        [ Element.centerX
-                        , Element.spacing 4
-                        , Font.light
-                        , Font.center
-                        , Font.color Colours.sunset
-                        ]
-                        [ Element.paragraph
-                            []
-                            [ Element.text "You didn't put anything in your workout!" ]
-                        , Element.paragraph
-                            []
-                            [ Element.text "Go to the settings and try again." ]
-                        ]
-                    ]
-        ]
+
+        Data.NeverStarted ->
+        -- the smh screen
+            Element.column
+                [ Element.width Element.fill
+                , Element.centerY
+                , Element.spacing 32
+                ]
+                { src = model.smhSrc
+                , description = "Sokka is disappointed in your workout"
+                }
+            , Element.paragraph
+                [ Font.color Colours.sunset
+                , Font.center
+                , Font.light
+                , Font.size 50
+                ]
+                [ Element.text "Disappointed." ]
+            , Element.textColumn
+                [ Element.centerX
+                , Element.spacing 4
+                , Element.width Element.fill
+                , Font.light
+                , Font.center
+                , Font.color Colours.sunset
+                ]
+                [ Element.paragraph
+                    []
+                    [ Element.text "You didn't put anything in your workout!" ]
+                , Element.paragraph
+                    []
+                    [ Element.text "Go to the settings and try again." ]
+                ]
+            ]
 
 
 
@@ -420,12 +618,23 @@ update : Msg -> Application -> ( Application, Cmd Msg )
 update msg (Application model data) =
     case msg of
         NewWindowSize width height ->
-            ( Application { model | device = Element.classifyDevice <| Flags.WindowSize width height } data, Cmd.none )
+            let
+                newWindowSize =
+                    Flags.WindowSize width height
+            in
+            ( Application
+                { model
+                    | screenDimensions = newWindowSize
+                    , device = Element.classifyDevice newWindowSize
+                }
+                data
+            , Cmd.none
+            )
 
         StartExercise blocks ->
             ( Application model
                 { data
-                    | state = Data.InProgress blocks
+                    | state = Data.InProgress (List.Nonempty.length blocks) blocks
                     , playing = True
                 }
             , Ports.playWhistle ()
@@ -433,7 +642,7 @@ update msg (Application model data) =
 
         NextSecond ->
             case data.state of
-                Data.InProgress (Nonempty block tl) ->
+                Data.InProgress totalBlockCount (Nonempty block tl) ->
                     case Data.decreaseTimeBlock block of
                         Nothing ->
                             case tl of
@@ -442,7 +651,7 @@ update msg (Application model data) =
                                     ( Application model { data | state = Data.Finished }, Ports.playTada () )
 
                                 x :: xs ->
-                                    ( Application model { data | state = Data.InProgress <| Nonempty x xs }, Ports.playWhistle () )
+                                    ( Application model { data | state = Data.InProgress totalBlockCount <| Nonempty x xs }, Ports.playWhistle () )
 
                         Just newBlock ->
                             let
@@ -453,7 +662,7 @@ update msg (Application model data) =
                                     else
                                         Cmd.none
                             in
-                            ( Application model { data | state = Data.InProgress <| Nonempty newBlock tl }, cmd )
+                            ( Application model { data | state = Data.InProgress totalBlockCount <| Nonempty newBlock tl }, cmd )
 
                 _ ->
                     -- ignore
@@ -492,7 +701,7 @@ subscriptions (Application _ data) =
     let
         tickSub =
             case data.state of
-                Data.InProgress _ ->
+                Data.InProgress _ _ ->
                     if data.playing then
                         Time.every 1000 (always NextSecond)
 

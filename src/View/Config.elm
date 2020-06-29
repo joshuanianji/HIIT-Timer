@@ -144,6 +144,7 @@ view (Config model data) =
             , color = Colours.sky
             , size = 50
             , msg = Nothing
+            , withBorder = False
             }
             |> Element.el [ Element.centerX ]
         , data.error
@@ -197,6 +198,7 @@ view (Config model data) =
                                             , color = Colours.grass
                                             , size = 30
                                             , msg = Nothing
+                                            , withBorder = False
                                             }
 
                                     else
@@ -205,6 +207,7 @@ view (Config model data) =
                                             , color = Colours.sunset
                                             , size = 30
                                             , msg = Nothing
+                                            , withBorder = False
                                             }
                             , checked = data.countdown
                             , label = Input.labelLeft [ Element.padding 8, Element.centerY ] <| Element.text "Countdown:"
@@ -309,6 +312,7 @@ view (Config model data) =
                     , color = Colours.sunflower
                     , size = 40
                     , msg = Just AddSet
+                    , withBorder = True
                     }
                     |> Element.el
                         [ Element.alignBottom
@@ -515,8 +519,17 @@ saveToLocalStorage config =
 
 
 subscriptions : Config -> Sub Msg
-subscriptions _ =
+subscriptions (Config model _) =
+    let
+        newWindowSub =
+            if Util.isVerticalPhone model.device then
+                -- vertical phones call a new window size event when the keyboard pops up as well, messing up the view function.
+                Sub.none
+
+            else
+                Browser.Events.onResize NewWindowSize
+    in
     Sub.batch
-        [ Browser.Events.onResize NewWindowSize
+        [ newWindowSub
         , Ports.storeConfigSuccess <| always StoreConfigSuccess
         ]
