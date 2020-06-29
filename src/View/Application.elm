@@ -366,6 +366,7 @@ view (Application model data) =
                     ]
 
             Data.NeverStarted ->
+            -- the smh screen
                 Element.column
                     [ Element.width Element.fill
                     , Element.centerY
