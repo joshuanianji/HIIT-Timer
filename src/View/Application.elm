@@ -566,40 +566,43 @@ view (Application model data) =
                     [ Element.text "Congratulations! You finished!" ]
                 ]
 
-
         Data.NeverStarted ->
-        -- the smh screen
+            -- the smh screen
             Element.column
                 [ Element.width Element.fill
                 , Element.centerY
                 , Element.spacing 32
+                , Element.padding 8
                 ]
-                { src = model.smhSrc
-                , description = "Sokka is disappointed in your workout"
-                }
-            , Element.paragraph
-                [ Font.color Colours.sunset
-                , Font.center
-                , Font.light
-                , Font.size 50
-                ]
-                [ Element.text "Disappointed." ]
-            , Element.textColumn
-                [ Element.centerX
-                , Element.spacing 4
-                , Element.width Element.fill
-                , Font.light
-                , Font.center
-                , Font.color Colours.sunset
-                ]
-                [ Element.paragraph
-                    []
-                    [ Element.text "You didn't put anything in your workout!" ]
+                [ Element.image
+                    [ Element.width (Element.px 125)
+                    , Element.centerX
+                    ]
+                    { src = model.smhSrc
+                    , description = "Sokka is disappointed in your workout"
+                    }
                 , Element.paragraph
-                    []
-                    [ Element.text "Go to the settings and try again." ]
+                    [ Font.color Colours.sunset
+                    , Font.center
+                    , Font.light
+                    , Font.size 50
+                    ]
+                    [ Element.text "Disappointed." ]
+                , Element.textColumn
+                    [ Element.spacing 4
+                    , Element.width Element.fill
+                    , Font.light
+                    , Font.center
+                    , Font.color Colours.sunset
+                    ]
+                    [ Element.paragraph
+                        [ Element.width Element.shrink ]
+                        [ Element.text "You didn't put anything in your workout!" ]
+                    , Element.paragraph
+                        [ Element.width Element.shrink ]
+                        [ Element.text "Go to the settings and try again." ]
+                    ]
                 ]
-            ]
 
 
 
