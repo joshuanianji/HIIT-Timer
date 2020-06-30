@@ -335,7 +335,7 @@ view options (Set data) =
                     Element.none
 
                   else
-                    Element.row
+                    Element.paragraph
                         [ Font.light
                         , Element.spacing 2
                         ]
@@ -347,7 +347,9 @@ view options (Set data) =
                             (Set data)
                             |> Duration.viewFancy
                             |> Element.el
-                                [ Font.color Colours.sunflower ]
+                                [ Font.color Colours.sunflower
+                                , Element.width Element.shrink
+                                ]
                         , Element.text ", with "
                         , data.repeat
                             - 1
@@ -552,6 +554,7 @@ sanitizeRepeat (Set data) =
         repeats =
             String.toInt data.repeatString
                 |> Maybe.withDefault 1
+                |> clamp 1 10
     in
     Set
         { data
