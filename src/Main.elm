@@ -5,6 +5,8 @@ import Browser.Events
 import Colours
 import Data.Flags as Flags exposing (Flags, WindowSize)
 import Element exposing (Element)
+import Element.Background as Background
+import Element.Border as Border
 import Element.Font as Font
 import FeatherIcons as Icon
 import Html exposing (Html)
@@ -41,6 +43,10 @@ type alias Model =
     -- internal application data
     , application : Application
 
+    -- popup letting them know that you can install it as a native app
+    , showIosInstall : Bool
+    , iosShareIcon : String
+
     -- when the local storage is saved, show the checkmark for 2 seconds
     , showSavedCheck : Bool
     }
@@ -61,6 +67,8 @@ init flags =
       , state = Settings
       , config = config
       , application = Application.init (Config.getData config) flags
+      , showIosInstall = flags.showIosInstall
+      , iosShareIcon = flags.images.iosShareIconSrc
       , showSavedCheck = False
       }
     , Cmd.none
@@ -73,12 +81,71 @@ init flags =
 
 view : Model -> Html Msg
 view model =
+    let
+        iosInstallPopup =
+            if model.showIosInstall then
+                Element.row
+                    [ Element.centerX
+                    , Element.padding 12
+                    , Element.spacing 8
+                    , Font.size 16
+                    , Font.light
+                    , Background.color Colours.white
+                    , Border.color Colours.sunflower
+                    , Border.rounded 15
+                    , Border.width 1
+                    ]
+                    [ Element.textColumn
+                        [ Element.width Element.fill
+                        , Element.spacing 4
+                        , Element.paddingXY 8 0
+                        ]
+                        [ Element.paragraph
+                            [ Element.width Element.fill ]
+                            [ Element.text "Install this webapp on your iOS device! " ]
+                        , Element.paragraph
+                            [ Element.width Element.fill ]
+                            [ Element.text "In Safari, tap "
+                            , Element.image
+                                [ Element.height (Element.px 16)
+                                , Element.paddingXY 2 0
+                                ]
+                                { src = model.iosShareIcon
+                                , description = "Ios Share button"
+                                }
+                            , Element.text ", then 'Add to the homescreen.'"
+                            ]
+                        ]
+                    , Element.el
+                        [ Element.height Element.fill
+                        , Element.width <| Element.px 1
+                        , Background.color Colours.lightGray
+                        ]
+                        Element.none
+                    , Util.viewIcon
+                        { icon = Icon.x
+                        , color = Colours.sunset
+                        , size = 32
+                        , msg = Just RemoveIosInstallPopup
+                        , withBorder = False
+                        }
+                        |> Element.el
+                            [ Element.width Element.shrink
+                            , Element.centerY
+                            ]
+                    ]
+
+            else
+                Element.none
+    in
     Element.column
         [ Element.width Element.fill
         , Element.height Element.fill
         , Element.spacing 24
+        , Element.paddingXY 0 16
         ]
-        [ case model.state of
+        [ Element.el [ Element.paddingXY 8 0 ] iosInstallPopup
+        , case model.state of
             Settings ->
                 settings model
 
@@ -237,6 +304,7 @@ application model =
 
 type Msg
     = NewWindowSize Int Int
+    | RemoveIosInstallPopup -- ios user clicks the 'x'
     | ConfigMsg Config.Msg
     | ApplicationMsg Application.Msg
     | ToApplication
@@ -252,6 +320,11 @@ update msg model =
     case msg of
         NewWindowSize width height ->
             ( { model | windowSize = Flags.WindowSize width height }
+            , Cmd.none
+            )
+
+        RemoveIosInstallPopup ->
+            ( { model | showIosInstall = False }
             , Cmd.none
             )
 

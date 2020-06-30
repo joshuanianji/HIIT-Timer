@@ -58,7 +58,7 @@ init data flags =
     Data.fromConfig data
         |> Application
             { keys = []
-            , smhSrc = flags.smhSrc
+            , smhSrc = flags.images.smhSrc
             , screenDimensions = flags.windowSize
             , device = Element.classifyDevice flags.windowSize
             }

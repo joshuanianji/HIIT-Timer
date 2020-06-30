@@ -10,12 +10,19 @@ import Json.Encode
 type alias Flags =
     { windowSize : WindowSize
     , storedConfig : Json.Encode.Value
-    , smhSrc : String
+    , showIosInstall : Bool
+    , images : Images
     }
 
 
 
 ---- HELPERS ----
+
+
+type alias Images =
+    { smhSrc : String
+    , iosShareIconSrc : String
+    }
 
 
 type alias WindowSize =

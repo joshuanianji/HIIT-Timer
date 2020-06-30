@@ -5,6 +5,7 @@ import './assets/simptip.min.css';
 
 // images
 import smh from './assets/img/smh.png';
+import iosShareIcon from './assets/img/ios_share_icon.png';
 import tadamp3File from './assets/sounds/tada.mp3';
 import tadawavFile from './assets/sounds/tada.wav';
 import tickFile from './assets/sounds/tick.mp3';
@@ -13,6 +14,23 @@ import whistleFile from './assets/sounds/whistle.mp3';
 // other imports
 import { Elm } from './Main.elm';
 import * as serviceWorker from './serviceWorker';
+
+// iOS "Add to home screen" popup
+
+// Detects if device is on iOS 
+const isIos = () => {
+    const userAgent = window.navigator.userAgent.toLowerCase();
+    console.log(userAgent)
+    return /iphone|ipad|ipod/.test(userAgent);
+}
+
+// Detects if device is in standalone mode
+const isInStandaloneMode = () => ('standalone' in window.navigator) && (window.navigator.standalone);
+let showIosInstall = false;
+// Checks if should display install popup notification:
+if (isIos() && !isInStandaloneMode()) {
+    showIosInstall = true
+}
 
 
 // init sounds
@@ -43,7 +61,11 @@ var app = Elm.Main.init({
             width: window.innerWidth
         },
         storedConfig: JSON.parse(storedConfig),
-        smhSrc: smh
+        showIosInstall: showIosInstall,
+        images: {
+            smhSrc: smh,
+            iosShareIconSrc: iosShareIcon
+        }
     }
 });
 
