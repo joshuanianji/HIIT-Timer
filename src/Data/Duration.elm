@@ -113,31 +113,26 @@ times { minutes, seconds } n =
 
 viewFancy : Duration -> Element msg
 viewFancy { minutes, seconds } =
-    Element.row
-        [ Element.spacing 4 ]
-        [ Element.row
-            [ Element.spacing 2
-            , Font.light
-            , Element.alignBottom
+    Element.paragraph
+        [ Element.paddingXY 2 0
+        , Element.width Element.shrink
+        ]
+        [ Element.text <| String.fromInt minutes
+        , Element.el
+            [ Element.alignBottom
+            , Element.paddingXY 2 0
+            , Font.size 12
             ]
-            [ Element.text <| String.fromInt minutes
-            , Element.el
-                [ Font.size 12
-                , Element.alignBottom
-                ]
-              <|
-                Element.text "m"
+          <|
+            Element.text "m"
+        , Element.text <|
+            String.padLeft 2 '0' <|
+                String.fromInt seconds
+        , Element.el
+            [ Element.alignBottom
+            , Element.paddingXY 2 0
+            , Font.size 12
             ]
-        , Element.row
-            [ Element.spacing 2
-            , Font.light
-            ]
-            [ Element.text <| String.padLeft 2 '0' <| String.fromInt seconds
-            , Element.el
-                [ Font.size 12
-                , Element.alignBottom
-                ]
-              <|
-                Element.text "s"
-            ]
+          <|
+            Element.text "s"
         ]
