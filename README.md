@@ -1,6 +1,9 @@
 # HIIT Timer
 
-A simple Progressive Web App for timing HIIT workouts, created from the frustration of having to pay for simple timer apps online. Compatible with mobile and desktop. Made with [Elm](https://elm-lang.org) and [create-elm-app](https://github.com/halfzebra/create-elm-app).
+A simple Progressive Web App for timing HIIT workouts,. Made with [Elm](https://elm-lang.org) and bootstrapped by [create-elm-app](https://github.com/halfzebra/create-elm-app).
+
+
+I also toyed around with the file structure, separating them into `Data`, `Modules`, and `View` with increasing modularity. Idk how viable this is tho lol.
 
 
 ## Demo 
