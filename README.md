@@ -1,6 +1,6 @@
 # HIIT Timer
 
-A simple app for timing hiit workouts, because my sister has to pAY for a stupid HIIT workout app on her phone?? It's literally a timer?? Anyway mine is better than any apps you find online ;)). Made with [Elm](https://elm-lang.org).
+A simple Progressive Web App for timing HIIT workouts, created from the frustration of having to pay for simple timer apps online. Compatible with mobile and desktop. Made with [Elm](https://elm-lang.org) and [create-elm-app](https://github.com/halfzebra/create-elm-app).
 
 
 ## Demo 

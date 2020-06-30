@@ -58,7 +58,7 @@ init flags =
             Config.init flags
     in
     ( { windowSize = flags.windowSize
-      , state = Application
+      , state = Settings
       , config = config
       , application = Application.init (Config.getData config) flags
       , showSavedCheck = False
