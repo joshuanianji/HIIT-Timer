@@ -17,7 +17,7 @@ import Json.Decode
 import Json.Encode
 import Modules.Exercise as Exercise
 import Modules.Set as Set exposing (Set)
-import Modules.TimeInput as TimeInput exposing (TimeInput)
+import View.TimeInput as TimeInput exposing (TimeInput)
 
 
 type alias Data =

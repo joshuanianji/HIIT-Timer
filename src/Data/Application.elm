@@ -12,7 +12,7 @@ import Data.Duration as Duration
 import Dict
 import List.Nonempty exposing (Nonempty(..))
 import Modules.Set as Set
-import Modules.TimeInput as TimeInput
+import View.TimeInput as TimeInput
 
 
 type alias Data =

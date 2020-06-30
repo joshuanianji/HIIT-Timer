@@ -24,9 +24,9 @@ import Json.Decode
 import Json.Encode
 import Modules.Exercise as Exercise
 import Modules.Set as Set
-import Modules.TimeInput as TimeInput
 import Ports
 import Util
+import View.TimeInput as TimeInput
 
 
 
@@ -161,26 +161,23 @@ view (Config model data) =
                 , Element.spacing 12
                 ]
                 [ TimeInput.view
-                    { updateInput = UpdateInput Exercise
-                    , updateFocus = UpdateFocus Exercise
-                    , displayText = Just "Exercise Duration:"
+                    { displayText = Just "Exercise Duration:"
                     , device = model.device
                     }
                     data.exerciseInput
+                    |> Element.map (UpdateTimeInput Exercise)
                 , TimeInput.view
-                    { updateInput = UpdateInput Break
-                    , updateFocus = UpdateFocus Break
-                    , displayText = Just "Break Between Exercises:"
+                    { displayText = Just "Break Between Exercises:"
                     , device = model.device
                     }
                     data.breakInput
+                    |> Element.map (UpdateTimeInput Break)
                 , TimeInput.view
-                    { updateInput = UpdateInput SetBreak
-                    , updateFocus = UpdateFocus SetBreak
-                    , displayText = Just "Break Between Sets:"
+                    { displayText = Just "Break Between Sets:"
                     , device = model.device
                     }
                     data.setBreakInput
+                    |> Element.map (UpdateTimeInput SetBreak)
 
                 -- countdown
                 , let
@@ -221,11 +218,10 @@ view (Config model data) =
                         if data.countdown then
                             data.countdownInput
                                 |> TimeInput.view
-                                    { updateInput = UpdateInput Countdown
-                                    , updateFocus = UpdateFocus Countdown
-                                    , displayText = Nothing
+                                    { displayText = Nothing
                                     , device = model.device
                                     }
+                                |> Element.map (UpdateTimeInput Countdown)
 
                         else
                             Element.el
@@ -350,8 +346,7 @@ view (Config model data) =
 
 type Msg
     = NewWindowSize Int Int
-    | UpdateInput Input String
-    | UpdateFocus Input Bool
+    | UpdateTimeInput Input TimeInput.Msg
     | NewElement Int
     | DeleteElement Int Int
     | NewSetRepeat Int String
@@ -384,33 +379,57 @@ update msg (Config model data) =
         NewWindowSize width height ->
             ( Config { model | device = Element.classifyDevice <| Flags.WindowSize width height } data, Cmd.none )
 
-        UpdateInput Exercise newVal ->
-            ( Config model { data | exerciseInput = TimeInput.updateInput data.exerciseInput newVal }, Cmd.none )
+        UpdateTimeInput Exercise timeInputMsg ->
+            let
+                ( newInput, save ) =
+                    TimeInput.update timeInputMsg data.exerciseInput
+            in
+            Config model { data | exerciseInput = newInput }
+                |> (if save then
+                        saveToLocalStorage
 
-        UpdateFocus Exercise isFocused ->
-            Config model { data | exerciseInput = TimeInput.updateFocus data.exerciseInput isFocused }
-                |> saveToLocalStorage
+                    else
+                        \c -> ( c, Cmd.none )
+                   )
 
-        UpdateInput Break newVal ->
-            ( Config model { data | breakInput = TimeInput.updateInput data.breakInput newVal }, Cmd.none )
+        UpdateTimeInput Break timeInputMsg ->
+            let
+                ( newInput, save ) =
+                    TimeInput.update timeInputMsg data.breakInput
+            in
+            Config model { data | breakInput = newInput }
+                |> (if save then
+                        saveToLocalStorage
 
-        UpdateFocus Break isFocused ->
-            Config model { data | breakInput = TimeInput.updateFocus data.breakInput isFocused }
-                |> saveToLocalStorage
+                    else
+                        \c -> ( c, Cmd.none )
+                   )
 
-        UpdateInput SetBreak newVal ->
-            ( Config model { data | setBreakInput = TimeInput.updateInput data.setBreakInput newVal }, Cmd.none )
+        UpdateTimeInput SetBreak timeInputMsg ->
+            let
+                ( newInput, save ) =
+                    TimeInput.update timeInputMsg data.setBreakInput
+            in
+            Config model { data | setBreakInput = newInput }
+                |> (if save then
+                        saveToLocalStorage
 
-        UpdateFocus SetBreak isFocused ->
-            Config model { data | setBreakInput = TimeInput.updateFocus data.setBreakInput isFocused }
-                |> saveToLocalStorage
+                    else
+                        \c -> ( c, Cmd.none )
+                   )
 
-        UpdateInput Countdown newVal ->
-            ( Config model { data | countdownInput = TimeInput.updateInput data.countdownInput newVal }, Cmd.none )
+        UpdateTimeInput Countdown timeInputMsg ->
+            let
+                ( newInput, save ) =
+                    TimeInput.update timeInputMsg data.countdownInput
+            in
+            Config model { data | countdownInput = newInput }
+                |> (if save then
+                        saveToLocalStorage
 
-        UpdateFocus Countdown isFocused ->
-            Config model { data | countdownInput = TimeInput.updateFocus data.countdownInput isFocused }
-                |> saveToLocalStorage
+                    else
+                        \c -> ( c, Cmd.none )
+                   )
 
         ToggleCountdown bool ->
             Config model { data | countdown = bool }

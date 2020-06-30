@@ -1,4 +1,4 @@
-module Modules.TimeInput exposing (TimeInput, getDuration, init, updateFocus, updateInput, view)
+module View.TimeInput exposing (Msg, TimeInput, getDuration, init, update, view)
 
 import Colours
 import Data.Duration as Duration exposing (Duration)
@@ -34,10 +34,8 @@ type alias Data =
 -- user puts these in when they run view function
 
 
-type alias Options msg =
-    { updateInput : String -> msg
-    , updateFocus : Bool -> msg
-    , displayText : Maybe String
+type alias Options =
+    { displayText : Maybe String
     , device : Element.Device
     }
 
@@ -72,7 +70,7 @@ getDuration (TimeInput data) =
 ---- VIEW ----
 
 
-view : Options msg -> TimeInput -> Element msg
+view : Options -> TimeInput -> Element Msg
 view options (TimeInput data) =
     let
         label =
@@ -130,10 +128,10 @@ view options (TimeInput data) =
                                 Element.none
                         ]
                         [ Duration.viewFancy data.duration ]
-                , Events.onFocus <| options.updateFocus True
-                , Events.onLoseFocus <| options.updateFocus False
+                , Events.onFocus <| UpdateFocus True
+                , Events.onLoseFocus <| UpdateFocus False
                 ]
-                { onChange = options.updateInput
+                { onChange = UpdateInput
                 , text = data.input
                 , placeholder = Nothing
                 , label = Input.labelHidden <| Maybe.withDefault "" options.displayText
@@ -165,58 +163,74 @@ view options (TimeInput data) =
 
 
 
----- UPDATE HELPERS ----
+---- UPDATE ----
 
 
-updateInput : TimeInput -> String -> TimeInput
-updateInput (TimeInput data) newInput =
-    let
-        -- so we won't get "stuck" at 0003 or something
-        -- this changes 0012 -> 12
-        removeLeftZeroes str =
-            String.foldl
-                (\c acc ->
-                    if acc == "" && c == '0' then
+type Msg
+    = UpdateInput String
+    | UpdateFocus Bool
+
+
+
+-- the extra bool is whether or not to save the configuration into the local storage
+-- I save to local storage whenever I lose focus
+
+
+update : Msg -> TimeInput -> ( TimeInput, Bool )
+update msg (TimeInput data) =
+    case msg of
+        UpdateInput newInput ->
+            let
+                -- so we won't get "stuck" at 0003 or something
+                -- this changes 0012 -> 12
+                removeLeftZeroes str =
+                    String.foldl
+                        (\c acc ->
+                            if acc == "" && c == '0' then
+                                ""
+
+                            else
+                                acc ++ String.fromChar c
+                        )
                         ""
+                        str
 
-                    else
-                        acc ++ String.fromChar c
+                sanitizedInput =
+                    newInput
+                        |> String.filter Char.isDigit
+                        |> removeLeftZeroes
+                        |> String.left 4
+            in
+            ( TimeInput
+                { data
+                    | input = sanitizedInput
+                    , duration =
+                        Duration.fromString sanitizedInput
+                            |> Maybe.withDefault (Duration.init 0)
+                }
+            , False
+            )
+
+        UpdateFocus isFocused ->
+            if isFocused then
+                ( TimeInput
+                    { data | focused = True }
+                , False
                 )
-                ""
-                str
 
-        sanitizedInput =
-            newInput
-                |> String.filter Char.isDigit
-                |> removeLeftZeroes
-                |> String.left 4
-    in
-    TimeInput
-        { data
-            | input = sanitizedInput
-            , duration =
-                Duration.fromString sanitizedInput
-                    |> Maybe.withDefault (Duration.init 0)
-        }
-
-
-updateFocus : TimeInput -> Bool -> TimeInput
-updateFocus (TimeInput data) isFocused =
-    if isFocused then
-        TimeInput
-            { data | focused = True }
-
-    else
-        let
-            sanitizedDuration =
-                Duration.fromString data.input
-                    |> Maybe.withDefault (Duration.init 0)
-                    |> Duration.sanitize
-        in
-        -- sanitize data
-        TimeInput
-            { data
-                | focused = False
-                , duration = sanitizedDuration
-                , input = Duration.toString sanitizedDuration
-            }
+            else
+                let
+                    sanitizedDuration =
+                        Duration.fromString data.input
+                            |> Maybe.withDefault (Duration.init 0)
+                            |> Duration.sanitize
+                in
+                -- sanitize data
+                ( TimeInput
+                    { data
+                        | focused = False
+                        , duration = sanitizedDuration
+                        , input = Duration.toString sanitizedDuration
+                    }
+                , True
+                )
