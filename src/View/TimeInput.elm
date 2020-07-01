@@ -105,6 +105,7 @@ view options (TimeInput data) =
                         , Element.centerY
                         , Element.alignRight
                         , Font.size 20
+                        , Font.light
                         , Font.color Colours.black
 
                         -- cursor
