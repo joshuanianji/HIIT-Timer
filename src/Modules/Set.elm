@@ -163,7 +163,9 @@ totalTime options (Set data) =
         Duration.init 0
 
     else
-        Duration.add (Duration.times (getTimeWithoutRepeats options (Set data)) data.repeat) (Duration.times options.breakDuration (data.repeat - 1))
+        Duration.add
+            (Duration.multiply data.repeat (getTimeWithoutRepeats options (Set data)))
+            (Duration.multiply (data.repeat - 1) options.breakDuration)
 
 
 
@@ -179,11 +181,11 @@ getTimeWithoutRepeats :
 getTimeWithoutRepeats options (Set data) =
     let
         totalExerciseTime =
-            Duration.times options.exerciseDuration data.exerciseCounter
+            Duration.multiply data.exerciseCounter options.exerciseDuration
 
         -- break time cannot be negative (if there are no exercise it will simple register as 0)
         totalBreakTime =
-            Duration.times options.breakDuration (data.exerciseCounter - 1)
+            Duration.multiply (data.exerciseCounter - 1) options.breakDuration
                 |> Duration.minimum (Duration.init 0)
     in
     Duration.add totalExerciseTime totalBreakTime

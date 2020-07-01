@@ -99,23 +99,32 @@ getData (Config _ data) =
 
 totalTime : Data.Data -> Duration
 totalTime data =
-    Dict.toList data.sets
-        |> List.map Tuple.second
-        |> List.map
-            (Set.totalTime
-                { exerciseDuration = TimeInput.getDuration data.exerciseInput
-                , breakDuration = TimeInput.getDuration data.breakInput
-                }
-            )
-        |> List.intersperse (TimeInput.getDuration data.setBreakInput)
-        |> List.foldl Duration.add (Duration.init 0)
-        |> Duration.add
-            (if data.countdown then
+    let
+        setsDuration =
+            Dict.toList data.sets
+                |> List.map Tuple.second
+                |> List.map
+                    (Set.totalTime
+                        { exerciseDuration = TimeInput.getDuration data.exerciseInput
+                        , breakDuration = TimeInput.getDuration data.breakInput
+                        }
+                    )
+                |> List.foldl Duration.add (Duration.init 0)
+
+        breaksDuration =
+            TimeInput.getDuration data.setBreakInput
+                |> Duration.multiply (Dict.size data.sets - 1)
+                |> Duration.minimum (Duration.init 0)
+
+        countdownDuration =
+            if data.countdown then
                 TimeInput.getDuration data.countdownInput
 
-             else
+            else
                 Duration.init 0
-            )
+    in
+    [ setsDuration, breaksDuration, countdownDuration ]
+        |> List.foldl Duration.add (Duration.init 0)
 
 
 

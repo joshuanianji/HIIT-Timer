@@ -4,8 +4,8 @@ module Data.Duration exposing
     , fromString
     , init
     , minimum
+    , multiply
     , sanitize
-    , times
     , toSeconds
     , toString
     , viewFancy
@@ -100,8 +100,8 @@ add d1 d2 =
         |> sanitize
 
 
-times : Duration -> Int -> Duration
-times { minutes, seconds } n =
+multiply : Int -> Duration -> Duration
+multiply n { minutes, seconds } =
     { minutes = minutes * n
     , seconds = seconds * n
     }
