@@ -29,6 +29,7 @@ import Element.Border as Border
 import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
+import Element.Lazy as Lazy
 import FeatherIcons as Icon
 import Html.Attributes
 import Modules.Exercise as Exercise exposing (Exercise)
@@ -451,44 +452,7 @@ view options (Set data) =
 
         -- exercises
         , if data.expanded then
-            Element.column
-                [ Element.spacing 16
-                , Element.width Element.fill
-                ]
-                [ Dict.toList
-                    data.exercises
-                    |> List.map
-                        (\( _, e ) ->
-                            Exercise.view
-                                { onDelete = options.onDeleteExercise data.position
-                                , updateName = options.updateExerciseName data.position
-                                , duration = options.exerciseDuration
-                                }
-                                e
-                        )
-                    |> List.intersperse (Exercise.breakView options.breakDuration)
-                    |> Element.column
-                        [ Element.spacing 8
-                        , Element.width Element.fill
-                        ]
-                , Element.el
-                    [ Element.alignBottom
-                    , Element.centerX
-                    ]
-                    (Util.viewIcon
-                        { icon = Icon.plus
-                        , color = Colours.sunset
-                        , size = 30
-                        , msg = Just <| options.onNewExercise data.position
-                        , withBorder = True
-                        }
-                        |> Element.el
-                            [ Element.alignBottom
-                            , Element.centerX
-                            , Background.color Colours.white
-                            ]
-                    )
-                ]
+            Lazy.lazy2 viewExercises options data
 
           else
             Element.none
@@ -517,6 +481,48 @@ view options (Set data) =
                 }
             |> Element.el
                 [ Element.centerX ]
+        ]
+
+
+viewExercises : Options msg -> Data -> Element msg
+viewExercises options data =
+    Element.column
+        [ Element.spacing 16
+        , Element.width Element.fill
+        ]
+        [ Dict.toList
+            data.exercises
+            |> List.map
+                (\( _, e ) ->
+                    Exercise.view
+                        { onDelete = options.onDeleteExercise data.position
+                        , updateName = options.updateExerciseName data.position
+                        , duration = options.exerciseDuration
+                        }
+                        e
+                )
+            |> List.intersperse (Exercise.breakView options.breakDuration)
+            |> Element.column
+                [ Element.spacing 8
+                , Element.width Element.fill
+                ]
+        , Element.el
+            [ Element.alignBottom
+            , Element.centerX
+            ]
+            (Util.viewIcon
+                { icon = Icon.plus
+                , color = Colours.sunset
+                , size = 30
+                , msg = Just <| options.onNewExercise data.position
+                , withBorder = True
+                }
+                |> Element.el
+                    [ Element.alignBottom
+                    , Element.centerX
+                    , Background.color Colours.white
+                    ]
+            )
         ]
 
 
@@ -564,7 +570,7 @@ sanitizeRepeat (Set data) =
         repeats =
             String.toInt data.repeatString
                 |> Maybe.withDefault 1
-                |> clamp 1 10
+                |> clamp 1 50
     in
     Set
         { data

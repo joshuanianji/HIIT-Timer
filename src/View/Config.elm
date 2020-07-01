@@ -19,6 +19,7 @@ import Element exposing (Element)
 import Element.Background as Background
 import Element.Font as Font
 import Element.Input as Input
+import Element.Lazy as Lazy
 import FeatherIcons as Icon
 import Json.Decode
 import Json.Encode
@@ -274,7 +275,8 @@ view (Config model data) =
                 data.sets
                 |> List.map
                     (\( _, set ) ->
-                        Set.view
+                        Lazy.lazy2
+                            Set.view
                             { onNewExercise = NewElement
 
                             -- exercise position then set position
