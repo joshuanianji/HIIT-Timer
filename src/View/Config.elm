@@ -114,7 +114,7 @@ totalTime data =
         breaksDuration =
             TimeInput.getDuration data.setBreakInput
                 |> Duration.multiply (Dict.size data.sets - 1)
-                |> Duration.minimum (Duration.init 0)
+                |> Duration.clampBelow (Duration.init 0)
 
         countdownDuration =
             if data.countdown then

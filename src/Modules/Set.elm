@@ -186,7 +186,7 @@ getTimeWithoutRepeats options (Set data) =
         -- break time cannot be negative (if there are no exercise it will simple register as 0)
         totalBreakTime =
             Duration.multiply (data.exerciseCounter - 1) options.breakDuration
-                |> Duration.minimum (Duration.init 0)
+                |> Duration.clampBelow (Duration.init 0)
     in
     Duration.add totalExerciseTime totalBreakTime
 

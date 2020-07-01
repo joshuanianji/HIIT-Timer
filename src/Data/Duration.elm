@@ -1,9 +1,9 @@
 module Data.Duration exposing
     ( Duration
     , add
+    , clampBelow
     , fromString
     , init
-    , minimum
     , multiply
     , sanitize
     , toSeconds
@@ -109,16 +109,16 @@ multiply n { minutes, seconds } =
 
 
 
--- selected the smaller duration
+-- cannot go below first value
 
 
-minimum : Duration -> Duration -> Duration
-minimum d1 d2 =
+clampBelow : Duration -> Duration -> Duration
+clampBelow d1 d2 =
     if toSeconds d1 < toSeconds d2 then
-        d1
+        d2
 
     else
-        d2
+        d1
 
 
 
