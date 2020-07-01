@@ -50,7 +50,8 @@ type Set
 type alias Data =
     { exercises : Dict Int Exercise
 
-    -- ensures we don't get duplicate numbers when we delete elements
+    -- ensures we don't get duplicate numbers when we delete elements.
+    -- This also ends up being the size of the dictionary
     , exerciseCounter : Int
 
     -- how many times we repeat the set
@@ -143,7 +144,7 @@ getEssentials exerciseDuration (Set data) =
         |> Dict.map (\_ -> Exercise.essentials exerciseDuration)
         |> Dict.toList
         |> List.map Tuple.second
-        |> (\l -> SetEssentials data.name data.repeat l)
+        |> SetEssentials data.name data.repeat
 
 
 
@@ -164,24 +165,33 @@ totalTime options (Set data) =
         Duration.add (Duration.times (getTimeWithoutRepeats options (Set data)) data.repeat) (Duration.times options.breakDuration (data.repeat - 1))
 
 
+
+-- total time of the set (without repeats)
+
+
 getTimeWithoutRepeats :
     { exerciseDuration : Duration
     , breakDuration : Duration
     }
     -> Set
     -> Duration
-getTimeWithoutRepeats options set =
-    getEssentials options.exerciseDuration set
-        |> .exercises
-        |> List.map Tuple.second
-        -- adding in break durations
-        |> List.intersperse options.breakDuration
-        |> List.foldl Duration.add (Duration.init 0)
+getTimeWithoutRepeats options (Set data) =
+    let
+        totalExerciseTime =
+            Duration.times options.exerciseDuration data.exerciseCounter
+
+        -- break time cannot be negative (if there are no exercise it will simple register as 0)
+        totalBreakTime =
+            Duration.times options.breakDuration (data.exerciseCounter - 1)
+                |> Duration.minimum (Duration.init 0)
+    in
+    Duration.add totalExerciseTime totalBreakTime
 
 
 
 -- to sanitize the exercises, we make the keys to the dictionary increasing in order again and change the exerciseCounter to the size of the dictionary. Note that this does not change the names in any way.
--- sanitation is nice to make the counter not go up indefinitely lol.
+-- sanitation is nice to make the counter not go up indefinitely.
+-- this also has a nice benefit of keeping track of the size of the dictionary as a separate variable
 
 
 sanitizeExercises : Set -> Set

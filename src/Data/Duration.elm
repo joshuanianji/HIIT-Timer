@@ -3,6 +3,7 @@ module Data.Duration exposing
     , add
     , fromString
     , init
+    , minimum
     , sanitize
     , times
     , toSeconds
@@ -105,6 +106,19 @@ times { minutes, seconds } n =
     , seconds = seconds * n
     }
         |> sanitize
+
+
+
+-- selected the smaller duration
+
+
+minimum : Duration -> Duration -> Duration
+minimum d1 d2 =
+    if toSeconds d1 < toSeconds d2 then
+        d1
+
+    else
+        d2
 
 
 
