@@ -130,6 +130,7 @@ viewFancy { minutes, seconds } =
     Element.paragraph
         [ Element.paddingXY 2 0
         , Element.width Element.shrink
+        , Font.light
         ]
         [ Element.text <| String.fromInt minutes
         , Element.el
