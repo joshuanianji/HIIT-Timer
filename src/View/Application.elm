@@ -65,7 +65,7 @@ init data flags =
 
 
 
--- every time the user switches to the application page
+-- every time the user switches to the application page from config, we only update config data.
 
 
 updateData : Data.Config.Data -> Application -> Application
@@ -110,499 +110,548 @@ view : Application -> Element Msg
 view (Application model data) =
     case data.state of
         Data.Starting blocks ->
-            let
-                title =
-                    Element.paragraph
-                        [ Font.size 50
-                        , Font.center
-                        , Font.color Colours.sunset
-                        ]
-                        [ Element.text "Ready?"
-                        ]
-
-                startExerciseButton =
-                    Util.viewIcon
-                        { icon = Icon.play
-                        , color = Colours.sunset
-                        , size = 75
-                        , msg = Just <| StartExercise blocks
-                        , withBorder = True
-                        }
-
-                subTitle =
-                    Element.paragraph
-                        [ Font.color Colours.sunset
-                        , Font.size 20
-                        , Font.center
-                        , Font.light
-                        ]
-                        [ Element.el [ Font.bold ] <| Element.text "Note:"
-                        , Element.text " if you press play, you "
-                        , Element.el [ Font.bold ] <| Element.text "cannot"
-                        , Element.text " go back to the settings page without resetting your workout!"
-                        ]
-            in
-            -- I have to use Util.centerOverlay to ensure that both the upper and lower blocks are the SAME height
-            if Util.isVerticalPhone model.device then
-                Element.column
-                    [ Element.width Element.fill
-                    , Element.height Element.fill
-                    , Element.padding 16
-                    ]
-                    [ Element.el
-                        [ Element.height Element.fill
-                        , Element.width Element.fill
-                        , Util.centerOverlay title
-                        ]
-                        Element.none
-                    , Element.el [ Element.centerX ] startExerciseButton
-                    , Element.el
-                        [ Element.height Element.fill
-                        , Element.width Element.fill
-                        , Util.centerOverlay subTitle
-                        ]
-                        Element.none
-                    ]
-
-            else
-                Element.column
-                    [ Element.width Element.fill
-                    , Element.height Element.fill
-                    ]
-                    [ Element.el
-                        [ Element.width Element.fill
-                        , Element.height Element.fill
-                        , Element.below <|
-                            Element.el
-                                [ Element.centerX
-                                , Element.alignBottom
-                                , Element.moveUp 60
-                                , Element.padding 4
-                                ]
-                                startExerciseButton
-                        , Util.centerOverlay title
-                        ]
-                        Element.none
-                    , Element.el
-                        [ Element.width Element.fill
-                        , Element.height Element.fill
-                        , Util.centerOverlay subTitle
-                        ]
-                        Element.none
-                    ]
+            viewStarting blocks model
 
         Data.InProgress totalBlockCount blocks ->
+            viewInProgress totalBlockCount blocks model data
+
+        Data.Finished ->
+            viewFinished
+
+        Data.NeverStarted ->
+            -- the smh screen
+            viewNeverStarted model
+
+
+viewStarting : Nonempty Data.TimeBlock -> Model -> Element Msg
+viewStarting blocks model =
+    let
+        title n =
+            Element.paragraph
+                [ Font.size n
+                , Font.center
+                , Font.color Colours.sunset
+                ]
+                [ Element.text "Ready?"
+                ]
+
+        startExerciseButton =
+            Util.viewIcon
+                { icon = Icon.play
+                , color = Colours.sunset
+                , size = 75
+                , msg = Just <| StartExercise blocks
+                , withBorder = True
+                }
+
+        subTitle n =
+            Element.paragraph
+                [ Font.color Colours.sunset
+                , Font.size n
+                , Font.center
+                , Font.light
+                ]
+                [ Element.el [ Font.bold ] <| Element.text "Note:"
+                , Element.text " if you press play, you "
+                , Element.el [ Font.bold ] <| Element.text "cannot"
+                , Element.text " go back to the settings page without resetting your workout!"
+                ]
+    in
+    -- I have to use Util.centerOverlay to ensure that both the upper and lower blocks are the SAME height
+    if Util.isVerticalPhone model.device then
+        Element.column
+            [ Element.width Element.fill
+            , Element.height Element.fill
+            , Element.padding 16
+            ]
+            [ Element.el
+                [ Element.height Element.fill
+                , Element.width Element.fill
+                , Util.centerOverlay <| title 50
+                ]
+                Element.none
+            , Element.el [ Element.centerX ] startExerciseButton
+            , Element.el
+                [ Element.height Element.fill
+                , Element.width Element.fill
+                , Util.centerOverlay <| subTitle 20
+                ]
+                Element.none
+            ]
+
+    else
+        let
+            data =
+                case model.device.orientation of
+                    -- the icons are in a column, but the Ready and the Note are in the left and ride sides respectively
+                    Element.Landscape ->
+                        { parentElem = Element.row
+                        , titleSize = 75
+                        , subTitleSize = 25
+                        , subTitleSurround = Util.surround 1 2 1
+                        , startExerciseButtonParent =
+                            Element.el
+                                [ Element.centerY
+                                , Element.width Element.shrink
+                                ]
+                        }
+
+                    Element.Portrait ->
+                        { parentElem = Element.column
+                        , titleSize = 50
+                        , subTitleSize = 20
+                        , subTitleSurround = identity
+                        , startExerciseButtonParent =
+                            Element.el
+                                [ Element.centerX
+                                , Element.padding 4
+                                ]
+                        }
+        in
+        data.parentElem
+            [ Element.width Element.fill
+            , Element.height Element.fill
+            ]
+            [ Element.el
+                [ Element.width Element.fill
+                , Element.height Element.fill
+                , Util.centerOverlay <| title data.titleSize
+                ]
+                Element.none
+            , data.startExerciseButtonParent
+                startExerciseButton
+            , Element.el
+                [ Element.width Element.fill
+                , Element.height Element.fill
+                , Util.centerOverlay <| subTitle data.subTitleSize
+                ]
+                Element.none
+                |> data.subTitleSurround
+            ]
+
+
+viewInProgress : Int -> Nonempty Data.TimeBlock -> Model -> Data -> Element Msg
+viewInProgress totalBlockCount blocks model data =
+    let
+        playPauseIcon =
+            if data.playing then
+                Icon.pause
+
+            else
+                Icon.play
+
+        viewPhone =
             let
-                playPauseIcon =
-                    if data.playing then
-                        Icon.pause
+                bigFont size color label =
+                    Element.paragraph
+                        [ Element.centerX
+                        , Font.size size
+                        , Font.center
+                        , Font.color color
+                        , Font.light
+                        ]
+                        [ Element.text label ]
 
-                    else
-                        Icon.play
-            in
-            -- TODO: REFACTOR TO REDUCE THE AMOUNT OF SIMILAR CODE
-            if Util.isVerticalPhone model.device then
-                let
-                    bigFont size color label =
-                        Element.paragraph
-                            [ Element.centerX
-                            , Font.size size
-                            , Font.center
-                            , Font.color color
-                            , Font.light
+                ( currBlockelem, themeColor, remainingTime ) =
+                    case List.Nonempty.head blocks of
+                        Data.CountDown secsLeft _ ->
+                            ( bigFont 32 Colours.sky "Countdown", Colours.sky, secsLeft )
+
+                        Data.ExerciseBreak secsLeft _ ->
+                            ( bigFont 32 Colours.grass "Break Between Exercises", Colours.grass, secsLeft )
+
+                        Data.SetBreak secsLeft _ ->
+                            ( bigFont 32 Colours.grass "Break Between Sets", Colours.grass, secsLeft )
+
+                        Data.Exercise { setName, name, duration, secsLeft } ->
+                            ( Element.column
+                                [ Element.centerX
+                                , Element.spacing 4
+                                , Font.center
+                                , Font.color Colours.sky
+                                ]
+                                [ bigFont 32 Colours.sunflower setName
+                                , bigFont 48 Colours.sunset name
+                                ]
+                            , Colours.sunset
+                            , secsLeft
+                            )
+
+                nextupString =
+                    case List.head <| List.Nonempty.tail blocks of
+                        Just (Data.ExerciseBreak _ _) ->
+                            "Break"
+
+                        Just (Data.SetBreak _ _) ->
+                            "Break"
+
+                        Just (Data.Exercise d) ->
+                            d.name
+
+                        _ ->
+                            "Workout Completion"
+
+                viewRemainingTime =
+                    Element.el
+                        [ Font.size <| model.screenDimensions.height // 8
+                        , Font.color themeColor
+                        , Font.bold
+                        ]
+                    <|
+                        Element.text (String.fromInt remainingTime)
+
+                bottomElems =
+                    Element.column
+                        [ Element.width Element.fill
+                        , Element.height Element.fill
+                        , Element.spaceEvenly
+                        ]
+                        [ Element.el
+                            [ Element.width Element.fill
+                            , Element.height (Element.px 1)
                             ]
-                            [ Element.text label ]
-
-                    ( currBlockelem, themeColor, remainingTime ) =
-                        case List.Nonempty.head blocks of
-                            Data.CountDown secsLeft _ ->
-                                ( bigFont 32 Colours.sky "Countdown", Colours.sky, secsLeft )
-
-                            Data.ExerciseBreak secsLeft _ ->
-                                ( bigFont 32 Colours.grass "Break Between Exercises", Colours.grass, secsLeft )
-
-                            Data.SetBreak secsLeft _ ->
-                                ( bigFont 32 Colours.grass "Break Between Sets", Colours.grass, secsLeft )
-
-                            Data.Exercise { setName, name, duration, secsLeft } ->
-                                ( Element.column
+                            Element.none
+                        , -- play/pause toggle
+                          Input.button
+                            [ Element.width (Element.maximum 150 Element.fill)
+                            , Element.height Element.shrink
+                            , Element.centerX
+                            , Border.rounded 15
+                            , Background.color Colours.sky
+                            ]
+                            { onPress = Just TogglePlay
+                            , label =
+                                Element.el
                                     [ Element.centerX
-                                    , Element.spacing 4
+                                    , Element.padding 8
+                                    ]
+                                <|
+                                    Util.viewIcon
+                                        { icon = playPauseIcon
+                                        , color = Colours.white
+                                        , size = 30
+                                        , msg = Nothing
+                                        , withBorder = False
+                                        }
+                            }
+
+                        -- next up
+                        , Element.paragraph
+                            [ Element.height Element.shrink
+                            , Font.center
+                            , Font.size 20
+                            , Font.light
+                            , Font.color Colours.sky
+                            ]
+                            [ Element.text "Next up: "
+                            , Element.text nextupString
+                            ]
+
+                        -- instagram-like timeline thing
+                        , let
+                            currExerciseNum =
+                                List.Nonempty.length blocks
+
+                            viewPebble n =
+                                let
+                                    ( pebbleHeight, pebbleColour ) =
+                                        if n == currExerciseNum then
+                                            -- this pebble represents the current exercise
+                                            ( 9, themeColor )
+
+                                        else if n > currExerciseNum then
+                                            ( 5, Colours.lightGray )
+
+                                        else
+                                            ( 5, Colours.withAlpha 0.6 Colours.sky )
+                                in
+                                Element.el
+                                    [ Element.width Element.fill
+                                    , Element.centerY
+                                    , Element.height (Element.px pebbleHeight)
+                                    , Border.rounded 3
+                                    , Background.color pebbleColour
+                                    ]
+                                    Element.none
+                          in
+                          List.range 1 totalBlockCount
+                            |> List.reverse
+                            |> List.map viewPebble
+                            |> Element.row
+                                [ Element.spacing 2
+                                , Element.width Element.fill
+                                ]
+                        , Element.el
+                            [ Element.width Element.fill
+                            , Element.height (Element.px 1)
+                            ]
+                            Element.none
+                        ]
+            in
+            Element.column
+                [ Element.width Element.fill
+                , Element.height Element.fill
+                , Element.padding 16
+                ]
+                [ -- current exercise
+                  Element.el
+                    [ Element.width Element.fill
+                    , Element.height <| Element.fillPortion 2
+                    , Util.centerOverlay currBlockelem
+                    ]
+                    Element.none
+
+                -- next exercise
+                , Element.el
+                    [ Element.width Element.fill
+                    , Element.height <| Element.fillPortion 3
+                    , Util.centerOverlay viewRemainingTime
+                    ]
+                    Element.none
+
+                -- bottom pause bar and dots
+                , Element.el
+                    [ Element.width Element.fill
+                    , Element.height <| Element.fillPortion 2
+                    ]
+                    bottomElems
+                ]
+
+        viewDesktop =
+            let
+                bigFont size color label =
+                    Element.el
+                        [ Element.centerX
+                        , Font.size size
+                        , Font.center
+                        , Font.color color
+                        , Font.light
+                        ]
+                    <|
+                        Element.text label
+
+                timerText secsLeft color =
+                    Element.el
+                        [ Element.centerX
+                        , Font.color color
+                        , Font.size 125
+                        ]
+                    <|
+                        Element.text <|
+                            String.fromInt secsLeft
+
+                timerBar secsLeft total color =
+                    Element.row
+                        [ Element.width Element.fill ]
+                        [ Element.el
+                            [ Element.width <| Element.fillPortion secsLeft
+                            , Element.height (Element.px 5)
+                            , Background.color color
+                            ]
+                            Element.none
+                        , Element.el
+                            [ Element.width <| Element.fillPortion (total - secsLeft) ]
+                            Element.none
+                        ]
+
+                dataGroup =
+                    case List.Nonempty.head blocks of
+                        Data.CountDown secsLeft total ->
+                            { upperElem = bigFont 32 Colours.sky "Countdown"
+                            , timerText = timerText secsLeft Colours.sky
+                            , timerBar = timerBar secsLeft total Colours.sky
+                            , theme = Colours.sky
+                            }
+
+                        Data.ExerciseBreak secsLeft total ->
+                            { upperElem = bigFont 32 Colours.grass "Break Between Exercise"
+                            , timerText = timerText secsLeft Colours.grass
+                            , timerBar = timerBar secsLeft total Colours.grass
+                            , theme = Colours.grass
+                            }
+
+                        Data.SetBreak secsLeft total ->
+                            { upperElem = bigFont 32 Colours.grass "Break Between Sets"
+                            , timerText = timerText secsLeft Colours.grass
+                            , timerBar = timerBar secsLeft total Colours.grass
+                            , theme = Colours.grass
+                            }
+
+                        Data.Exercise { setName, name, duration, secsLeft } ->
+                            { upperElem =
+                                Element.column
+                                    [ Element.centerX
+                                    , Element.spacing 16
+                                    , Font.size 32
                                     , Font.center
                                     , Font.color Colours.sky
                                     ]
                                     [ bigFont 32 Colours.sunflower setName
                                     , bigFont 48 Colours.sunset name
                                     ]
-                                , Colours.sunset
-                                , secsLeft
-                                )
+                            , timerText = timerText secsLeft Colours.sunset
+                            , timerBar = timerBar secsLeft duration Colours.sunset
+                            , theme = Colours.sunset
+                            }
 
-                    nextupString =
-                        case List.head <| List.Nonempty.tail blocks of
-                            Just (Data.ExerciseBreak _ _) ->
-                                "Break"
+                nextupString =
+                    case List.head <| List.Nonempty.tail blocks of
+                        Just (Data.ExerciseBreak _ _) ->
+                            "Break"
 
-                            Just (Data.SetBreak _ _) ->
-                                "Break"
+                        Just (Data.SetBreak _ _) ->
+                            "Break"
 
-                            Just (Data.Exercise d) ->
-                                d.name
+                        Just (Data.Exercise d) ->
+                            d.name
 
-                            _ ->
-                                "Workout Completion"
+                        _ ->
+                            "Workout Completion"
 
-                    viewRemainingTime =
+                nextup =
+                    Element.paragraph
+                        [ Element.centerX
+                        , Font.size 32
+                        , Font.color Colours.sky
+                        , Font.light
+                        ]
+                        [ Element.text "Next up: "
+                        , Element.text nextupString
+                        ]
+            in
+            Element.column
+                [ Element.width Element.fill
+                , Element.height Element.fill
+                ]
+                [ -- Toggle button and all things above the button
+                  Element.el
+                    [ Element.width Element.fill
+                    , Element.height Element.fill
+                    , Element.below
+                        (Util.viewIcon
+                            { icon = playPauseIcon
+                            , color = dataGroup.theme
+                            , size = 75
+                            , msg = Just TogglePlay
+                            , withBorder = True
+                            }
+                            |> Element.el
+                                [ Element.centerX
+                                , Element.moveUp 56
+                                , Element.padding 4
+                                , Background.color Colours.white
+                                ]
+                            |> Element.el
+                                [ Element.width Element.fill
+                                , Element.behindContent <|
+                                    Element.el
+                                        [ Element.width Element.fill ]
+                                        dataGroup.timerBar
+                                ]
+                        )
+                    , Element.inFront <|
                         Element.el
-                            [ Font.size <| model.screenDimensions.height // 8
-                            , Font.color themeColor
-                            , Font.bold
+                            [ Element.centerX
+                            , Element.centerY
                             ]
-                        <|
-                            Element.text (String.fromInt remainingTime)
+                            dataGroup.upperElem
+                    ]
+                    Element.none
 
-                    bottomElems =
+                -- all things below the button
+                , Element.el
+                    [ Element.width Element.fill
+                    , Element.height Element.fill
+                    , Element.inFront <|
                         Element.column
-                            [ Element.width Element.fill
-                            , Element.height Element.fill
-                            , Element.spaceEvenly
-                            ]
-                            [ Element.el
-                                [ Element.width Element.fill
-                                , Element.height (Element.px 1)
-                                ]
-                                Element.none
-                            , -- play/pause toggle
-                              Input.button
-                                [ Element.width (Element.maximum 150 Element.fill)
-                                , Element.height Element.shrink
-                                , Element.centerX
-                                , Border.rounded 15
-                                , Background.color Colours.sky
-                                ]
-                                { onPress = Just TogglePlay
-                                , label =
-                                    Element.el
-                                        [ Element.centerX
-                                        , Element.padding 8
-                                        ]
-                                    <|
-                                        Util.viewIcon
-                                            { icon = playPauseIcon
-                                            , color = Colours.white
-                                            , size = 30
-                                            , msg = Nothing
-                                            , withBorder = False
-                                            }
-                                }
-
-                            -- next up
-                            , Element.paragraph
-                                [ Element.height Element.shrink
-                                , Font.center
-                                , Font.size 20
-                                , Font.light
-                                , Font.color Colours.sky
-                                ]
-                                [ Element.text "Next up: "
-                                , Element.text nextupString
-                                ]
-
-                            -- instagram-like timeline thing
-                            , let
-                                currExerciseNum =
-                                    List.Nonempty.length blocks
-
-                                viewPebble n =
-                                    let
-                                        ( pebbleHeight, pebbleColour ) =
-                                            if n == currExerciseNum then
-                                                -- this pebble represents the current exercise
-                                                ( 9, themeColor )
-
-                                            else if n > currExerciseNum then
-                                                ( 5, Colours.lightGray )
-
-                                            else
-                                                ( 5, Colours.withAlpha 0.6 Colours.sky )
-                                    in
-                                    Element.el
-                                        [ Element.width Element.fill
-                                        , Element.centerY
-                                        , Element.height (Element.px pebbleHeight)
-                                        , Border.rounded 3
-                                        , Background.color pebbleColour
-                                        ]
-                                        Element.none
-                              in
-                              List.range 1 totalBlockCount
-                                |> List.reverse
-                                |> List.map viewPebble
-                                |> Element.row
-                                    [ Element.spacing 2
-                                    , Element.width Element.fill
-                                    ]
-                            , Element.el
-                                [ Element.width Element.fill
-                                , Element.height (Element.px 1)
-                                ]
-                                Element.none
-                            ]
-                in
-                Element.column
-                    [ Element.width Element.fill
-                    , Element.height Element.fill
-                    , Element.padding 16
-                    ]
-                    [ -- current exercise
-                      Element.el
-                        [ Element.width Element.fill
-                        , Element.height <| Element.fillPortion 2
-                        , Util.centerOverlay currBlockelem
-                        ]
-                        Element.none
-
-                    -- next exercise
-                    , Element.el
-                        [ Element.width Element.fill
-                        , Element.height <| Element.fillPortion 3
-                        , Util.centerOverlay viewRemainingTime
-                        ]
-                        Element.none
-
-                    -- bottom pause bar and dots
-                    , Element.el
-                        [ Element.width Element.fill
-                        , Element.height <| Element.fillPortion 2
-                        ]
-                        bottomElems
-                    ]
-
-            else
-                let
-                    bigFont size color label =
-                        Element.el
                             [ Element.centerX
-                            , Font.size size
-                            , Font.center
-                            , Font.color color
-                            , Font.light
+                            , Element.centerY
+                            , Element.spacing 16
                             ]
-                        <|
-                            Element.text label
-
-                    timerText secsLeft color =
-                        Element.el
-                            [ Element.centerX
-                            , Font.color color
-                            , Font.size 125
+                            [ dataGroup.timerText
+                            , nextup
                             ]
-                        <|
-                            Element.text <|
-                                String.fromInt secsLeft
-
-                    timerBar secsLeft total color =
-                        Element.row
-                            [ Element.width Element.fill ]
-                            [ Element.el
-                                [ Element.width <| Element.fillPortion secsLeft
-                                , Element.height (Element.px 5)
-                                , Background.color color
-                                ]
-                                Element.none
-                            , Element.el
-                                [ Element.width <| Element.fillPortion (total - secsLeft) ]
-                                Element.none
-                            ]
-
-                    dataGroup =
-                        case List.Nonempty.head blocks of
-                            Data.CountDown secsLeft total ->
-                                { upperElem = bigFont 32 Colours.sky "Countdown"
-                                , timerText = timerText secsLeft Colours.sky
-                                , timerBar = timerBar secsLeft total Colours.sky
-                                , theme = Colours.sky
-                                }
-
-                            Data.ExerciseBreak secsLeft total ->
-                                { upperElem = bigFont 32 Colours.grass "Break Between Exercise"
-                                , timerText = timerText secsLeft Colours.grass
-                                , timerBar = timerBar secsLeft total Colours.grass
-                                , theme = Colours.grass
-                                }
-
-                            Data.SetBreak secsLeft total ->
-                                { upperElem = bigFont 32 Colours.grass "Break Between Sets"
-                                , timerText = timerText secsLeft Colours.grass
-                                , timerBar = timerBar secsLeft total Colours.grass
-                                , theme = Colours.grass
-                                }
-
-                            Data.Exercise { setName, name, duration, secsLeft } ->
-                                { upperElem =
-                                    Element.column
-                                        [ Element.centerX
-                                        , Element.spacing 16
-                                        , Font.size 32
-                                        , Font.center
-                                        , Font.color Colours.sky
-                                        ]
-                                        [ bigFont 32 Colours.sunflower setName
-                                        , bigFont 48 Colours.sunset name
-                                        ]
-                                , timerText = timerText secsLeft Colours.sunset
-                                , timerBar = timerBar secsLeft duration Colours.sunset
-                                , theme = Colours.sunset
-                                }
-
-                    nextupString =
-                        case List.head <| List.Nonempty.tail blocks of
-                            Just (Data.ExerciseBreak _ _) ->
-                                "Break"
-
-                            Just (Data.SetBreak _ _) ->
-                                "Break"
-
-                            Just (Data.Exercise d) ->
-                                d.name
-
-                            _ ->
-                                "Workout Completion"
-
-                    nextup =
-                        Element.paragraph
-                            [ Element.centerX
-                            , Font.size 32
-                            , Font.color Colours.sky
-                            , Font.light
-                            ]
-                            [ Element.text "Next up: "
-                            , Element.text nextupString
-                            ]
-                in
-                Element.column
-                    [ Element.width Element.fill
-                    , Element.height Element.fill
                     ]
-                    [ -- Toggle button and all things above the button
-                      Element.el
-                        [ Element.width Element.fill
-                        , Element.height Element.fill
-                        , Element.below
-                            (Util.viewIcon
-                                { icon = playPauseIcon
-                                , color = dataGroup.theme
-                                , size = 75
-                                , msg = Just TogglePlay
-                                , withBorder = True
-                                }
-                                |> Element.el
-                                    [ Element.centerX
-                                    , Element.moveUp 56
-                                    , Element.padding 4
-                                    , Background.color Colours.white
-                                    ]
-                                |> Element.el
-                                    [ Element.width Element.fill
-                                    , Element.behindContent <|
-                                        Element.el
-                                            [ Element.width Element.fill ]
-                                            dataGroup.timerBar
-                                    ]
-                            )
-                        , Element.inFront <|
-                            Element.el
-                                [ Element.centerX
-                                , Element.centerY
-                                ]
-                                dataGroup.upperElem
-                        ]
-                        Element.none
-
-                    -- all things below the button
-                    , Element.el
-                        [ Element.width Element.fill
-                        , Element.height Element.fill
-                        , Element.inFront <|
-                            Element.column
-                                [ Element.centerX
-                                , Element.centerY
-                                , Element.spacing 16
-                                ]
-                                [ dataGroup.timerText
-                                , nextup
-                                ]
-                        ]
-                        Element.none
-                    ]
-
-        Data.Finished ->
-            Element.column
-                [ Element.width Element.fill
-                , Element.centerY
-                , Element.spacing 32
+                    Element.none
                 ]
-                [ Util.viewIcon
-                    { icon = Icon.star
-                    , color = Colours.sunflower
-                    , size = 100
-                    , msg = Nothing
-                    , withBorder = False
-                    }
-                    |> Element.el
-                        [ Element.centerX ]
-                , Element.paragraph
-                    [ Font.color Colours.sunflower
-                    , Font.center
-                    , Font.light
-                    , Font.size 50
-                    ]
-                    [ Element.text "WOOHOO!" ]
-                , Element.paragraph
-                    [ Font.color Colours.sunflower
-                    , Font.center
-                    , Font.light
-                    ]
-                    [ Element.text "Congratulations! You finished!" ]
-                ]
+    in
+    -- TODO: REFACTOR TO REDUCE THE AMOUNT OF SIMILAR CODE
+    if Util.isVerticalPhone model.device then
+        viewPhone
 
-        Data.NeverStarted ->
-            -- the smh screen
-            Element.column
-                [ Element.width Element.fill
-                , Element.centerY
-                , Element.spacing 32
-                , Element.padding 8
-                ]
-                [ Element.image
-                    [ Element.width (Element.px 125)
-                    , Element.centerX
-                    ]
-                    { src = model.smhSrc
-                    , description = "Sokka is disappointed in your workout"
-                    }
-                , Element.paragraph
-                    [ Font.color Colours.sunset
-                    , Font.center
-                    , Font.light
-                    , Font.size 50
-                    ]
-                    [ Element.text "Disappointed." ]
-                , Element.textColumn
-                    [ Element.spacing 4
-                    , Element.width Element.fill
-                    , Font.light
-                    , Font.center
-                    , Font.color Colours.sunset
-                    ]
-                    [ Element.paragraph
-                        [ Element.width Element.shrink ]
-                        [ Element.text "You didn't put anything in your workout!" ]
-                    , Element.paragraph
-                        [ Element.width Element.shrink ]
-                        [ Element.text "Go to the settings and try again." ]
-                    ]
-                ]
+    else
+        viewDesktop
+
+
+viewFinished : Element Msg
+viewFinished =
+    Element.column
+        [ Element.width Element.fill
+        , Element.centerY
+        , Element.spacing 32
+        ]
+        [ Util.viewIcon
+            { icon = Icon.star
+            , color = Colours.sunflower
+            , size = 100
+            , msg = Nothing
+            , withBorder = False
+            }
+            |> Element.el
+                [ Element.centerX ]
+        , Element.paragraph
+            [ Font.color Colours.sunflower
+            , Font.center
+            , Font.light
+            , Font.size 50
+            ]
+            [ Element.text "WOOHOO!" ]
+        , Element.paragraph
+            [ Font.color Colours.sunflower
+            , Font.center
+            , Font.light
+            ]
+            [ Element.text "Congratulations! You finished!" ]
+        ]
+
+
+viewNeverStarted : Model -> Element Msg
+viewNeverStarted model =
+    Element.column
+        [ Element.width Element.fill
+        , Element.centerY
+        , Element.spacing 32
+        , Element.padding 8
+        ]
+        [ Element.image
+            [ Element.width (Element.px 125)
+            , Element.centerX
+            ]
+            { src = model.smhSrc
+            , description = "Sokka is disappointed in your workout"
+            }
+        , Element.paragraph
+            [ Font.color Colours.sunset
+            , Font.center
+            , Font.light
+            , Font.size 50
+            ]
+            [ Element.text "Disappointed." ]
+        , Element.textColumn
+            [ Element.spacing 4
+            , Element.width Element.fill
+            , Font.light
+            , Font.center
+            , Font.color Colours.sunset
+            ]
+            [ Element.paragraph
+                [ Element.width Element.shrink ]
+                [ Element.text "You didn't put anything in your workout!" ]
+            , Element.paragraph
+                [ Element.width Element.shrink ]
+                [ Element.text "Go to the settings and try again." ]
+            ]
+        ]
 
 
 

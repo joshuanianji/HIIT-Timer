@@ -64,7 +64,7 @@ init flags =
             Config.init flags
     in
     ( { windowSize = flags.windowSize
-      , state = Settings
+      , state = Application
       , config = config
       , application = Application.init (Config.getData config) flags
       , showIosInstall = flags.showIosInstall
@@ -141,7 +141,6 @@ view model =
     Element.column
         [ Element.width Element.fill
         , Element.height Element.fill
-        , Element.spacing 24
         , Element.paddingXY 0 16
         ]
         [ Element.el [ Element.paddingXY 8 0 ] iosInstallPopup
