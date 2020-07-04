@@ -3,7 +3,7 @@ import './assets/main.css';
 import './assets/howler.core';
 import './assets/simptip.min.css';
 
-// images
+// images and files
 import smh from './assets/img/smh.png';
 import iosShareIcon from './assets/img/ios_share_icon.png';
 import tadamp3File from './assets/sounds/tada.mp3';
@@ -73,7 +73,7 @@ app.ports.storeConfig.subscribe(config => {
     let configJson = JSON.stringify(config);
     localStorage.setItem('config', configJson);
     console.log("Saved state: ", configJson);
-    // the actual process is too fast so I set a timeout to make it seem more realiztis LOL
+    // the actual process is too fast so I set a timeout to make it seem more realistic LOL
     setTimeout(() => app.ports.storeConfigSuccess.send(null), 250);
 });
 
