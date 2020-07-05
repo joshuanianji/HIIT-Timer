@@ -519,68 +519,101 @@ viewInProgress totalBlockCount blocks model data =
                         , Element.text nextupString
                         ]
             in
-            Element.column
+            Element.row
                 [ Element.width Element.fill
                 , Element.height Element.fill
                 ]
-                [ -- Toggle button and all things above the button
-                  Element.el
+                [ Element.el
                     [ Element.width Element.fill
                     , Element.height Element.fill
-                    , Element.below
-                        (Util.viewIcon
-                            { icon = playPauseIcon
-                            , color = dataGroup.theme
-                            , size = 75
-                            , msg = Just TogglePlay
-                            , withBorder = True
-                            }
-                            |> Element.el
-                                [ Element.centerX
-                                , Element.moveUp 56
-                                , Element.padding 4
-                                , Background.color Colours.white
-                                ]
-                            |> Element.el
-                                [ Element.width Element.fill
-                                , Element.behindContent <|
-                                    Element.el
-                                        [ Element.width Element.fill ]
-                                        dataGroup.timerBar
-                                ]
-                        )
-                    , Element.inFront <|
-                        Element.el
-                            [ Element.centerX
-                            , Element.centerY
-                            ]
-                            dataGroup.upperElem
+                    , Util.centerOverlay dataGroup.upperElem
                     ]
                     Element.none
-
-                -- all things below the button
+                , Element.el
+                    [ Element.centerY
+                    , Element.width Element.shrink
+                    ]
+                  <|
+                    Util.viewIcon
+                        { icon = playPauseIcon
+                        , color = dataGroup.theme
+                        , size = 75
+                        , msg = Just TogglePlay
+                        , withBorder = True
+                        }
                 , Element.el
                     [ Element.width Element.fill
                     , Element.height Element.fill
-                    , Element.inFront <|
-                        Element.column
-                            [ Element.centerX
-                            , Element.centerY
-                            , Element.spacing 16
-                            ]
-                            [ dataGroup.timerText
-                            , nextup
-                            ]
+                    , Util.centerOverlay dataGroup.timerText
                     ]
                     Element.none
                 ]
+
+        -- Element.column
+        --     [ Element.width Element.fill
+        --     , Element.height Element.fill
+        --     ]
+        --     [ -- Toggle button and all things above the button
+        --       Element.el
+        --         [ Element.width Element.fill
+        --         , Element.height Element.fill
+        --         , Element.below
+        --             (Util.viewIcon
+        --                 { icon = playPauseIcon
+        --                 , color = dataGroup.theme
+        --                 , size = 75
+        --                 , msg = Just TogglePlay
+        --                 , withBorder = True
+        --                 }
+        --                 |> Element.el
+        --                     [ Element.centerX
+        --                     , Element.moveUp 56
+        --                     , Element.padding 4
+        --                     , Background.color Colours.white
+        --                     ]
+        --                 |> Element.el
+        --                     [ Element.width Element.fill
+        --                     , Element.behindContent <|
+        --                         Element.el
+        --                             [ Element.width Element.fill ]
+        --                             dataGroup.timerBar
+        --                     ]
+        --             )
+        --         , Element.inFront <|
+        --             Element.el
+        --                 [ Element.centerX
+        --                 , Element.centerY
+        --                 ]
+        --                 dataGroup.upperElem
+        --         ]
+        --         Element.none
+        --     -- all things below the button
+        --     , Element.el
+        --         [ Element.width Element.fill
+        --         , Element.height Element.fill
+        --         , Element.inFront <|
+        --             Element.column
+        --                 [ Element.centerX
+        --                 , Element.centerY
+        --                 , Element.spacing 16
+        --                 ]
+        --                 [ dataGroup.timerText
+        --                 , nextup
+        --                 ]
+        --         ]
+        --         Element.none
+        --     ]
     in
-    -- TODO: REFACTOR TO REDUCE THE AMOUNT OF SIMILAR CODE
     if Util.isVerticalPhone model.device then
         viewPhone
 
     else
-        viewDesktop
+        case model.device.orientation of
+            Element.Portrait ->
+                Element.text "Portrait mode coming soon lmao"
+
+            Element.Landscape ->
+                viewDesktop
 
 
 viewFinished : Element Msg
