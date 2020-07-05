@@ -81,7 +81,7 @@ updateData data (Application model _) =
 exercising : Application -> Bool
 exercising (Application _ data) =
     case data.state of
-        Data.InProgress _ _ ->
+        Data.InProgress _ ->
             True
 
         _ ->
@@ -109,11 +109,11 @@ endWorkout (Application model _) =
 view : Application -> Element Msg
 view (Application model data) =
     case data.state of
-        Data.Starting blocks ->
-            viewStarting blocks model
+        Data.Starting workoutData ->
+            viewStarting workoutData model
 
-        Data.InProgress totalBlockCount blocks ->
-            viewInProgress totalBlockCount blocks model data
+        Data.InProgress workoutData ->
+            viewInProgress workoutData model data
 
         Data.Finished ->
             viewFinished
@@ -123,8 +123,8 @@ view (Application model data) =
             viewNeverStarted model
 
 
-viewStarting : Nonempty Data.TimeBlock -> Model -> Element Msg
-viewStarting blocks model =
+viewStarting : Data.WorkoutData -> Model -> Element Msg
+viewStarting workoutData model =
     let
         title n =
             Element.paragraph
@@ -132,30 +132,59 @@ viewStarting blocks model =
                 , Font.center
                 , Font.color Colours.sunset
                 ]
-                [ Element.text "Ready?"
+                [ Element.text "Ready?" ]
+
+        info n =
+            Element.paragraph
+                [ Font.light
+                , Font.size n
                 ]
+                []
 
         startExerciseButton =
             Util.viewIcon
                 { icon = Icon.play
                 , color = Colours.sunset
                 , size = 75
-                , msg = Just <| StartExercise blocks
+                , msg = Just <| StartExercise workoutData
                 , withBorder = True
                 }
 
-        subTitle n =
-            Element.paragraph
-                [ Font.color Colours.sunset
-                , Font.size n
-                , Font.center
-                , Font.light
-                ]
-                [ Element.el [ Font.bold ] <| Element.text "Note:"
-                , Element.text " if you press play, you "
-                , Element.el [ Font.bold ] <| Element.text "cannot"
-                , Element.text " go back to the settings page without resetting your workout!"
-                ]
+        subTitle n displayPortrait =
+            let
+                heading =
+                    if displayPortrait then
+                        Element.el
+                            [ Element.centerX
+                            , Font.bold
+                            , Font.size 32
+                            ]
+                        <|
+                            Element.text "Note:"
+
+                    else
+                        Element.el [ Font.bold ] <| Element.text "Note:"
+
+                message =
+                    Element.paragraph
+                        []
+                        [ Element.text " if you press play, you "
+                        , Element.el [ Font.bold ] <| Element.text "cannot"
+                        , Element.text " go back to the settings page without resetting your workout!"
+                        ]
+
+                attrs =
+                    [ Font.color Colours.sunset
+                    , Font.size n
+                    , Font.center
+                    , Font.light
+                    ]
+            in
+            if displayPortrait then
+                Element.column (Element.spacing 8 :: attrs) [ heading, message ]
+
+            else
+                Element.paragraph attrs [ heading, message ]
     in
     -- I have to use Util.centerOverlay to ensure that both the upper and lower blocks are the SAME height
     if Util.isVerticalPhone model.device then
@@ -174,7 +203,7 @@ viewStarting blocks model =
             , Element.el
                 [ Element.height Element.fill
                 , Element.width Element.fill
-                , Util.centerOverlay <| subTitle 20
+                , Util.centerOverlay <| subTitle 20 False
                 ]
                 Element.none
             ]
@@ -187,7 +216,7 @@ viewStarting blocks model =
                     Element.Landscape ->
                         { parentElem = Element.row
                         , titleSize = 75
-                        , subTitleSize = 25
+                        , subTitleElem = subTitle 25 True
                         , subTitleSurround = Util.surround 1 2 1
                         , startExerciseButtonParent =
                             Element.el
@@ -199,7 +228,7 @@ viewStarting blocks model =
                     Element.Portrait ->
                         { parentElem = Element.column
                         , titleSize = 50
-                        , subTitleSize = 20
+                        , subTitleElem = subTitle 20 False
                         , subTitleSurround = identity
                         , startExerciseButtonParent =
                             Element.el
@@ -223,15 +252,15 @@ viewStarting blocks model =
             , Element.el
                 [ Element.width Element.fill
                 , Element.height Element.fill
-                , Util.centerOverlay <| subTitle data.subTitleSize
+                , Util.centerOverlay data.subTitleElem
                 ]
                 Element.none
                 |> data.subTitleSurround
             ]
 
 
-viewInProgress : Int -> Nonempty Data.TimeBlock -> Model -> Data -> Element Msg
-viewInProgress totalBlockCount blocks model data =
+viewInProgress : Data.WorkoutData -> Model -> Data -> Element Msg
+viewInProgress workoutData model data =
     let
         playPauseIcon =
             if data.playing then
@@ -239,6 +268,66 @@ viewInProgress totalBlockCount blocks model data =
 
             else
                 Icon.play
+
+        pebbles currBlockColour { secsLeft, totalTime } =
+            let
+                currExerciseNum =
+                    List.Nonempty.length workoutData.blocksLeft
+
+                viewPebble n =
+                    let
+                        -- if the user is not on a phone, we'll make it have the little timer bar for the current pebble
+                        specialPebble height colour =
+                            Element.row
+                                [ Element.width Element.fill
+                                , Element.centerY
+                                , Element.height (Element.px height)
+                                , Border.rounded 3
+                                , Background.color (Colours.withAlpha 0.6 colour)
+                                ]
+                                [ Element.el
+                                    [ Element.width <| Element.fillPortion (totalTime - secsLeft) ]
+                                    Element.none
+                                , Element.el
+                                    [ Element.width <| Element.fillPortion secsLeft
+                                    , Element.height (Element.px height)
+                                    , Background.color colour
+                                    , Border.rounded 3
+                                    ]
+                                    Element.none
+                                ]
+
+                        ( pebbleHeight, pebbleColour, useSpecial ) =
+                            if n == currExerciseNum then
+                                -- this pebble represents the current exercise
+                                ( 9, currBlockColour, True )
+
+                            else if n > currExerciseNum then
+                                ( 5, Colours.lightGray, False )
+
+                            else
+                                ( 5, Colours.withAlpha 0.6 Colours.sky, False )
+                    in
+                    if useSpecial then
+                        specialPebble pebbleHeight pebbleColour
+
+                    else
+                        Element.el
+                            [ Element.width Element.fill
+                            , Element.centerY
+                            , Element.height (Element.px pebbleHeight)
+                            , Border.rounded 3
+                            , Background.color pebbleColour
+                            ]
+                            Element.none
+            in
+            List.range 1 workoutData.info.totalTimeblocks
+                |> List.reverse
+                |> List.map viewPebble
+                |> Element.row
+                    [ Element.spacing 2
+                    , Element.width Element.fill
+                    ]
 
         viewPhone =
             let
@@ -252,33 +341,47 @@ viewInProgress totalBlockCount blocks model data =
                         ]
                         [ Element.text label ]
 
-                ( currBlockelem, themeColor, remainingTime ) =
-                    case List.Nonempty.head blocks of
-                        Data.CountDown secsLeft _ ->
-                            ( bigFont 32 Colours.sky "Countdown", Colours.sky, secsLeft )
+                dataGroup =
+                    case List.Nonempty.head workoutData.blocksLeft of
+                        Data.CountDown secsLeft totalTime ->
+                            { currBlockElem = bigFont 32 Colours.sky "Countdown"
+                            , themeColour = Colours.sky
+                            , secsLeft = secsLeft
+                            , totalTime = totalTime
+                            }
 
-                        Data.ExerciseBreak secsLeft _ ->
-                            ( bigFont 32 Colours.grass "Break Between Exercises", Colours.grass, secsLeft )
+                        Data.ExerciseBreak secsLeft totalTime ->
+                            { currBlockElem = bigFont 32 Colours.grass "Break Between Exercises"
+                            , themeColour = Colours.grass
+                            , secsLeft = secsLeft
+                            , totalTime = totalTime
+                            }
 
-                        Data.SetBreak secsLeft _ ->
-                            ( bigFont 32 Colours.grass "Break Between Sets", Colours.grass, secsLeft )
+                        Data.SetBreak secsLeft totalTime ->
+                            { currBlockElem = bigFont 32 Colours.grass "Break Between Sets"
+                            , themeColour = Colours.grass
+                            , secsLeft = secsLeft
+                            , totalTime = totalTime
+                            }
 
                         Data.Exercise { setName, name, duration, secsLeft } ->
-                            ( Element.column
-                                [ Element.centerX
-                                , Element.spacing 4
-                                , Font.center
-                                , Font.color Colours.sky
-                                ]
-                                [ bigFont 32 Colours.sunflower setName
-                                , bigFont 48 Colours.sunset name
-                                ]
-                            , Colours.sunset
-                            , secsLeft
-                            )
+                            { currBlockElem =
+                                Element.column
+                                    [ Element.centerX
+                                    , Element.spacing 4
+                                    , Font.center
+                                    , Font.color Colours.sky
+                                    ]
+                                    [ bigFont 32 Colours.sunflower setName
+                                    , bigFont 48 Colours.sunset name
+                                    ]
+                            , themeColour = Colours.sunset
+                            , secsLeft = secsLeft
+                            , totalTime = duration
+                            }
 
                 nextupString =
-                    case List.head <| List.Nonempty.tail blocks of
+                    case List.head <| List.Nonempty.tail workoutData.blocksLeft of
                         Just (Data.ExerciseBreak _ _) ->
                             "Break"
 
@@ -294,11 +397,11 @@ viewInProgress totalBlockCount blocks model data =
                 viewRemainingTime =
                     Element.el
                         [ Font.size <| model.screenDimensions.height // 8
-                        , Font.color themeColor
+                        , Font.color dataGroup.themeColour
                         , Font.bold
                         ]
                     <|
-                        Element.text (String.fromInt remainingTime)
+                        Element.text (String.fromInt dataGroup.secsLeft)
 
                 bottomElems =
                     Element.column
@@ -348,39 +451,10 @@ viewInProgress totalBlockCount blocks model data =
                             ]
 
                         -- instagram-like timeline thing
-                        , let
-                            currExerciseNum =
-                                List.Nonempty.length blocks
-
-                            viewPebble n =
-                                let
-                                    ( pebbleHeight, pebbleColour ) =
-                                        if n == currExerciseNum then
-                                            -- this pebble represents the current exercise
-                                            ( 9, themeColor )
-
-                                        else if n > currExerciseNum then
-                                            ( 5, Colours.lightGray )
-
-                                        else
-                                            ( 5, Colours.withAlpha 0.6 Colours.sky )
-                                in
-                                Element.el
-                                    [ Element.width Element.fill
-                                    , Element.centerY
-                                    , Element.height (Element.px pebbleHeight)
-                                    , Border.rounded 3
-                                    , Background.color pebbleColour
-                                    ]
-                                    Element.none
-                          in
-                          List.range 1 totalBlockCount
-                            |> List.reverse
-                            |> List.map viewPebble
-                            |> Element.row
-                                [ Element.spacing 2
-                                , Element.width Element.fill
-                                ]
+                        , pebbles dataGroup.themeColour
+                            { secsLeft = dataGroup.secsLeft
+                            , totalTime = dataGroup.totalTime
+                            }
                         , Element.el
                             [ Element.width Element.fill
                             , Element.height (Element.px 1)
@@ -397,7 +471,7 @@ viewInProgress totalBlockCount blocks model data =
                   Element.el
                     [ Element.width Element.fill
                     , Element.height <| Element.fillPortion 2
-                    , Util.centerOverlay currBlockelem
+                    , Util.centerOverlay dataGroup.currBlockElem
                     ]
                     Element.none
 
@@ -425,7 +499,6 @@ viewInProgress totalBlockCount blocks model data =
                         , Font.size size
                         , Font.center
                         , Font.color color
-                        , Font.light
                         ]
                     <|
                         Element.text label
@@ -440,62 +513,51 @@ viewInProgress totalBlockCount blocks model data =
                         Element.text <|
                             String.fromInt secsLeft
 
-                timerBar secsLeft total color =
-                    Element.row
-                        [ Element.width Element.fill ]
-                        [ Element.el
-                            [ Element.width <| Element.fillPortion secsLeft
-                            , Element.height (Element.px 5)
-                            , Background.color color
-                            ]
-                            Element.none
-                        , Element.el
-                            [ Element.width <| Element.fillPortion (total - secsLeft) ]
-                            Element.none
-                        ]
-
                 dataGroup =
-                    case List.Nonempty.head blocks of
-                        Data.CountDown secsLeft total ->
-                            { upperElem = bigFont 32 Colours.sky "Countdown"
+                    case List.Nonempty.head workoutData.blocksLeft of
+                        Data.CountDown secsLeft totalTime ->
+                            { currExercise = bigFont 54 Colours.sky "Countdown"
                             , timerText = timerText secsLeft Colours.sky
-                            , timerBar = timerBar secsLeft total Colours.sky
-                            , theme = Colours.sky
+                            , themeColour = Colours.sky
+                            , secsLeft = secsLeft
+                            , totalTime = totalTime
                             }
 
-                        Data.ExerciseBreak secsLeft total ->
-                            { upperElem = bigFont 32 Colours.grass "Break Between Exercise"
+                        Data.ExerciseBreak secsLeft totalTime ->
+                            { currExercise = bigFont 54 Colours.grass "Break Between Exercise"
                             , timerText = timerText secsLeft Colours.grass
-                            , timerBar = timerBar secsLeft total Colours.grass
-                            , theme = Colours.grass
+                            , themeColour = Colours.grass
+                            , secsLeft = secsLeft
+                            , totalTime = totalTime
                             }
 
-                        Data.SetBreak secsLeft total ->
-                            { upperElem = bigFont 32 Colours.grass "Break Between Sets"
+                        Data.SetBreak secsLeft totalTime ->
+                            { currExercise = bigFont 54 Colours.grass "Break Between Sets"
                             , timerText = timerText secsLeft Colours.grass
-                            , timerBar = timerBar secsLeft total Colours.grass
-                            , theme = Colours.grass
+                            , themeColour = Colours.grass
+                            , secsLeft = secsLeft
+                            , totalTime = totalTime
                             }
 
                         Data.Exercise { setName, name, duration, secsLeft } ->
-                            { upperElem =
+                            { currExercise =
                                 Element.column
                                     [ Element.centerX
                                     , Element.spacing 16
-                                    , Font.size 32
                                     , Font.center
                                     , Font.color Colours.sky
                                     ]
                                     [ bigFont 32 Colours.sunflower setName
-                                    , bigFont 48 Colours.sunset name
+                                    , bigFont 54 Colours.sunset name
                                     ]
                             , timerText = timerText secsLeft Colours.sunset
-                            , timerBar = timerBar secsLeft duration Colours.sunset
-                            , theme = Colours.sunset
+                            , themeColour = Colours.sunset
+                            , secsLeft = secsLeft
+                            , totalTime = duration
                             }
 
                 nextupString =
-                    case List.head <| List.Nonempty.tail blocks of
+                    case List.head <| List.Nonempty.tail workoutData.blocksLeft of
                         Just (Data.ExerciseBreak _ _) ->
                             "Break"
 
@@ -519,90 +581,56 @@ viewInProgress totalBlockCount blocks model data =
                         , Element.text nextupString
                         ]
             in
-            Element.row
+            Element.column
                 [ Element.width Element.fill
                 , Element.height Element.fill
+                , Element.padding 16
+                , Element.behindContent <|
+                    Element.el
+                        [ Element.alignBottom
+                        , Element.width Element.fill
+                        , Element.paddingXY 0 16
+                        ]
+                        (pebbles dataGroup.themeColour
+                            { secsLeft = dataGroup.secsLeft
+                            , totalTime = dataGroup.totalTime
+                            }
+                        )
                 ]
-                [ Element.el
+                [ Element.row
                     [ Element.width Element.fill
                     , Element.height Element.fill
-                    , Util.centerOverlay dataGroup.upperElem
                     ]
-                    Element.none
-                , Element.el
-                    [ Element.centerY
-                    , Element.width Element.shrink
+                    [ Element.column
+                        [ Element.width Element.fill
+                        , Element.height Element.fill
+                        , Element.spaceEvenly
+                        ]
+                        [ Element.el [ Element.height (Element.px 0) ] Element.none
+                        , dataGroup.currExercise
+                        , Element.el [ Element.centerX ] nextup
+                        , Element.el [ Element.height (Element.px 0) ] Element.none
+                        ]
+                    , Element.el
+                        [ Element.centerY
+                        , Element.width Element.shrink
+                        ]
+                      <|
+                        Util.viewIcon
+                            { icon = playPauseIcon
+                            , color = dataGroup.themeColour
+                            , size = 75
+                            , msg = Just TogglePlay
+                            , withBorder = True
+                            }
+                    , Element.el
+                        [ Element.width Element.fill
+                        , Element.height Element.fill
+                        , Util.centerOverlay dataGroup.timerText
+                        ]
+                        Element.none
                     ]
-                  <|
-                    Util.viewIcon
-                        { icon = playPauseIcon
-                        , color = dataGroup.theme
-                        , size = 75
-                        , msg = Just TogglePlay
-                        , withBorder = True
-                        }
-                , Element.el
-                    [ Element.width Element.fill
-                    , Element.height Element.fill
-                    , Util.centerOverlay dataGroup.timerText
-                    ]
-                    Element.none
                 ]
-
-        -- Element.column
-        --     [ Element.width Element.fill
-        --     , Element.height Element.fill
-        --     ]
-        --     [ -- Toggle button and all things above the button
-        --       Element.el
-        --         [ Element.width Element.fill
-        --         , Element.height Element.fill
-        --         , Element.below
-        --             (Util.viewIcon
-        --                 { icon = playPauseIcon
-        --                 , color = dataGroup.theme
-        --                 , size = 75
-        --                 , msg = Just TogglePlay
-        --                 , withBorder = True
-        --                 }
-        --                 |> Element.el
-        --                     [ Element.centerX
-        --                     , Element.moveUp 56
-        --                     , Element.padding 4
-        --                     , Background.color Colours.white
-        --                     ]
-        --                 |> Element.el
-        --                     [ Element.width Element.fill
-        --                     , Element.behindContent <|
-        --                         Element.el
-        --                             [ Element.width Element.fill ]
-        --                             dataGroup.timerBar
-        --                     ]
-        --             )
-        --         , Element.inFront <|
-        --             Element.el
-        --                 [ Element.centerX
-        --                 , Element.centerY
-        --                 ]
-        --                 dataGroup.upperElem
-        --         ]
-        --         Element.none
-        --     -- all things below the button
-        --     , Element.el
-        --         [ Element.width Element.fill
-        --         , Element.height Element.fill
-        --         , Element.inFront <|
-        --             Element.column
-        --                 [ Element.centerX
-        --                 , Element.centerY
-        --                 , Element.spacing 16
-        --                 ]
-        --                 [ dataGroup.timerText
-        --                 , nextup
-        --                 ]
-        --         ]
-        --         Element.none
-        --     ]
     in
     if Util.isVerticalPhone model.device then
         viewPhone
@@ -693,7 +721,7 @@ viewNeverStarted model =
 
 type Msg
     = NewWindowSize Int Int
-    | StartExercise (Nonempty Data.TimeBlock)
+    | StartExercise Data.WorkoutData
     | NextSecond
     | TogglePlay
     | KeyMsg Keyboard.Msg -- so we can react upon the space key press
@@ -716,10 +744,10 @@ update msg (Application model data) =
             , Cmd.none
             )
 
-        StartExercise blocks ->
+        StartExercise workoutData ->
             ( Application model
                 { data
-                    | state = Data.InProgress (List.Nonempty.length blocks) blocks
+                    | state = Data.InProgress workoutData
                     , playing = True
                 }
             , Ports.playWhistle ()
@@ -727,7 +755,11 @@ update msg (Application model data) =
 
         NextSecond ->
             case data.state of
-                Data.InProgress totalBlockCount (Nonempty block tl) ->
+                Data.InProgress workoutData ->
+                    let
+                        ( block, tl ) =
+                            ( List.Nonempty.head workoutData.blocksLeft, List.Nonempty.tail workoutData.blocksLeft )
+                    in
                     case Data.decreaseTimeBlock block of
                         Nothing ->
                             case tl of
@@ -736,7 +768,7 @@ update msg (Application model data) =
                                     ( Application model { data | state = Data.Finished }, Ports.playTada () )
 
                                 x :: xs ->
-                                    ( Application model { data | state = Data.InProgress totalBlockCount <| Nonempty x xs }, Ports.playWhistle () )
+                                    ( Application model { data | state = Data.InProgress { workoutData | blocksLeft = Nonempty x xs } }, Ports.playWhistle () )
 
                         Just newBlock ->
                             let
@@ -747,7 +779,7 @@ update msg (Application model data) =
                                     else
                                         Cmd.none
                             in
-                            ( Application model { data | state = Data.InProgress totalBlockCount <| Nonempty newBlock tl }, cmd )
+                            ( Application model { data | state = Data.InProgress { workoutData | blocksLeft = Nonempty newBlock tl } }, cmd )
 
                 _ ->
                     -- ignore
@@ -786,7 +818,7 @@ subscriptions (Application _ data) =
     let
         tickSub =
             case data.state of
-                Data.InProgress _ _ ->
+                Data.InProgress _ ->
                     if data.playing then
                         Time.every 1000 (always NextSecond)
 

@@ -220,7 +220,7 @@ updatePosition n (Set data) =
 
 
 
--- for localstorage stuff
+-- for localstorage stuff and other things
 
 
 getData : Set -> Data
