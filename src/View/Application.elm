@@ -283,7 +283,8 @@ viewInProgress workoutData model data =
                                 , Element.centerY
                                 , Element.height (Element.px height)
                                 , Border.rounded 3
-                                , Background.color (Colours.withAlpha 0.6 colour)
+                                , Border.width 1
+                                , Border.color colour
                                 ]
                                 [ Element.el
                                     [ Element.width <| Element.fillPortion (totalTime - secsLeft) ]
