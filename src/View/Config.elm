@@ -12,7 +12,7 @@ module View.Config exposing
 import Browser.Events
 import Colours
 import Data.Config as Data
-import Data.Duration as Duration exposing (Duration)
+import Data.Duration as Duration
 import Data.Flags as Flags exposing (Flags)
 import Dict
 import Element exposing (Element)
