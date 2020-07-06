@@ -274,7 +274,7 @@ view options (Set data) =
                         [ Font.light
 
                         -- works for Android
-                        , Element.htmlAttribute <| Html.Attributes.type_ "text"
+                        , Element.htmlAttribute <| Html.Attributes.type_ "number"
 
                         -- -- for iOS
                         , Element.htmlAttribute <| Html.Attributes.attribute "inputmode" "numeric"

@@ -90,10 +90,10 @@ view options (TimeInput data) =
             Input.text
                 [ Element.width (Element.px 175)
                 , Element.padding 24
+                , Element.htmlAttribute <| Html.Attributes.class "no-cursor"
 
                 -- works for android
-                , Element.htmlAttribute <| Html.Attributes.type_ "text"
-                , Element.htmlAttribute <| Html.Attributes.class "no-cursor"
+                , Element.htmlAttribute <| Html.Attributes.type_ "number"
 
                 -- for iOS maybe
                 , Element.htmlAttribute <| Html.Attributes.attribute "inputmode" "numeric"

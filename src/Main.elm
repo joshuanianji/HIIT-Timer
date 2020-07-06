@@ -152,21 +152,22 @@ view model =
             Application ->
                 application model
         ]
-        |> Element.layoutWith
-            { options =
-                [ Element.focusStyle
-                    { borderColor = Just Colours.focusBorder
-                    , backgroundColor = Nothing
-                    , shadow =
-                        Just
-                            { color = Colours.focusBorder
-                            , offset = ( 0, 0 )
-                            , blur = 0
-                            , size = 3
-                            }
-                    }
-                ]
-            }
+        -- |> Element.layoutWith
+        --     { options =
+        --         [ Element.focusStyle
+        --             { borderColor = Just Colours.focusBorder
+        --             , backgroundColor = Nothing
+        --             , shadow =
+        --                 Just
+        --                     { color = Colours.focusBorder
+        --                     , offset = ( 0, 0 )
+        --                     , blur = 0
+        --                     , size = 3
+        --                     }
+        --             }
+        --         ]
+        --     }
+        |> Element.layout
             [ Font.family
                 [ Font.typeface "Lato" ]
             ]

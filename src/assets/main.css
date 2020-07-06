@@ -8,6 +8,7 @@ input {
     pointer-events:none;
 }
 .no-cursor {
+    cursor: none;
     caret-color: transparent;
 }
 /* hide arrows in number selection */
@@ -30,4 +31,32 @@ input[type=number] {
     text-align: right;
     font-size : 24px;
     font-family: 'Lato', sans-serif;
+}
+
+/* ree */
+.blink_text {
+
+    animation:1s blinker linear infinite;
+    -webkit-animation:1s blinker linear infinite;
+    -moz-animation:1s blinker linear infinite;
+
+     color: red;
+}
+
+@-moz-keyframes blinker {  
+     0% { opacity: 1.0; }
+     50% { opacity: 0.0; }
+     100% { opacity: 1.0; }
+}
+
+@-webkit-keyframes blinker {  
+     0% { opacity: 1.0; }
+     50% { opacity: 0.0; }
+     100% { opacity: 1.0; }
+}
+
+@keyframes blinker {  
+     0% { opacity: 1.0; }
+     50% { opacity: 0.0; }
+     100% { opacity: 1.0; }
 }
