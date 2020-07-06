@@ -267,12 +267,18 @@ view options (Set data) =
         repeats =
             let
                 label =
-                    Element.el [ Font.light ] <| Element.text "Number of Repeats:"
+                    Element.el [ Font.light ] <| Element.text "Number of Repeats (max 50):"
 
                 input =
                     Input.text
                         [ Font.light
+
+                        -- works for Android
                         , Element.htmlAttribute <| Html.Attributes.type_ "number"
+
+                        -- -- for iOS
+                        , Element.htmlAttribute <| Html.Attributes.attribute "inputmode" "numeric"
+                        , Element.htmlAttribute <| Html.Attributes.attribute "pattern" "[0-9]*"
 
                         -- here we "sanitize" the repeats by making an empty string worth 0
                         , Events.onLoseFocus <| options.sanitizeRepeat data.position
@@ -280,7 +286,7 @@ view options (Set data) =
                         { onChange = options.onUpdateRepeat data.position
                         , text = data.repeatString
                         , placeholder = Nothing
-                        , label = Input.labelHidden "Number of Repeats:"
+                        , label = Input.labelHidden "Number of Repeats (Max 50):"
                         }
 
                 repeatIcon =
