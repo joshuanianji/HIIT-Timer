@@ -2,17 +2,24 @@ module Data.Application exposing
     ( AppState(..)
     , Data
     , TimeBlock(..)
+    , WorkoutData
+    , WorkoutInfo
     , decreaseTimeBlock
     , fromConfig
     , timeLeft
     )
 
 import Data.Config as Config
-import Data.Duration as Duration
+import Data.Duration as Duration exposing (Duration)
 import Dict
 import List.Nonempty exposing (Nonempty(..))
 import Modules.Set as Set
+import Set
 import View.TimeInput as TimeInput
+
+
+
+---- TYPE ----
 
 
 type alias Data =
@@ -22,10 +29,30 @@ type alias Data =
 
 
 type AppState
-    = Starting (Nonempty TimeBlock) -- the exercises to hold on to lol
-    | InProgress Int (Nonempty TimeBlock) -- int is the total number of timeblocks that we keep constant. this helps create the "dotted timeline" in the mobile version
+    = Starting WorkoutData
+    | InProgress WorkoutData
     | NeverStarted
     | Finished
+
+
+
+-- data about the workout to easily keep track of in the application
+
+
+type alias WorkoutData =
+    { blocksLeft : Nonempty TimeBlock
+
+    -- static data about our workout
+    , info : WorkoutInfo
+    }
+
+
+type alias WorkoutInfo =
+    { totalExercises : Int
+    , totalSets : Int
+    , totalTimeblocks : Int
+    , totalTime : Duration
+    }
 
 
 type TimeBlock
@@ -108,6 +135,7 @@ fromConfig configData =
         countdownSecs =
             Duration.toSeconds <| TimeInput.getDuration configData.countdownInput
 
+        -- flatten the sets into a nonempty list of exercises
         exercises =
             configData.sets
                 |> Dict.toList
@@ -140,17 +168,40 @@ fromConfig configData =
                 |> List.intersperse (List.Nonempty.fromElement <| SetBreak setBreakSecs setBreakSecs)
                 |> List.Nonempty.fromList
                 |> Maybe.map List.Nonempty.concat
+                |> Maybe.map
+                    -- add countdown
+                    (\blocks ->
+                        if configData.countdown then
+                            List.Nonempty.cons (CountDown countdownSecs countdownSecs) blocks
+
+                        else
+                            blocks
+                    )
+
+        -- the static information about the workout
+        setDictFold currSet acc =
+            let
+                set =
+                    Set.getData currSet
+            in
+            acc + set.repeat * Dict.size set.exercises
+
+        workoutInfo =
+            { totalExercises = Dict.foldl (always setDictFold) 0 configData.sets
+            , totalSets = Dict.size configData.sets
+            , totalTimeblocks =
+                Maybe.map List.Nonempty.length exercises
+                    |> Maybe.withDefault 0
+            , totalTime = Config.totalTime configData
+            }
 
         state =
             case exercises of
                 Just blocks ->
-                    if configData.countdown then
-                        blocks
-                            |> List.Nonempty.cons (CountDown countdownSecs countdownSecs)
-                            |> Starting
-
-                    else
-                        Starting blocks
+                    Starting
+                        { blocksLeft = blocks
+                        , info = workoutInfo
+                        }
 
                 -- no elements - never started the workout smh
                 Nothing ->

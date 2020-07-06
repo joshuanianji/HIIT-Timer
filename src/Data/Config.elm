@@ -5,12 +5,13 @@ module Data.Config exposing
     , encode
     , fromLocalStorage
     , sanitizeSets
+    , totalTime
     )
 
 -- the data the Config module stores (accessible to the App data as well)
 -- helpful to put JSON decode and encode stuff without clogging up the Modules.Config.elm file as well as other helper functions
 
-import Data.Duration as Duration
+import Data.Duration as Duration exposing (Duration)
 import Data.LocalStorageConfig as LocalStorageConfig
 import Dict exposing (Dict)
 import Json.Decode
@@ -127,6 +128,40 @@ default =
     , setCounter = 1
     , error = Nothing
     }
+
+
+
+-- Other Helpers
+
+
+totalTime : Data -> Duration
+totalTime data =
+    let
+        setsDuration =
+            Dict.toList data.sets
+                |> List.map Tuple.second
+                |> List.map
+                    (Set.totalTime
+                        { exerciseDuration = TimeInput.getDuration data.exerciseInput
+                        , breakDuration = TimeInput.getDuration data.breakInput
+                        }
+                    )
+                |> List.foldl Duration.add (Duration.init 0)
+
+        breaksDuration =
+            TimeInput.getDuration data.setBreakInput
+                |> Duration.multiply (Dict.size data.sets - 1)
+                |> Duration.clampBelow (Duration.init 0)
+
+        countdownDuration =
+            if data.countdown then
+                TimeInput.getDuration data.countdownInput
+
+            else
+                Duration.init 0
+    in
+    [ setsDuration, breaksDuration, countdownDuration ]
+        |> List.foldl Duration.add (Duration.init 0)
 
 
 sanitizeSets : Data -> Data

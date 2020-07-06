@@ -64,7 +64,7 @@ init flags =
             Config.init flags
     in
     ( { windowSize = flags.windowSize
-      , state = Settings
+      , state = Application
       , config = config
       , application = Application.init (Config.getData config) flags
       , showIosInstall = flags.showIosInstall
@@ -84,16 +84,27 @@ view model =
     let
         iosInstallPopup =
             if model.showIosInstall then
+                let
+                    fontSize =
+                        model.windowSize.width
+                            // 24
+                            |> clamp 13 30
+                in
                 Element.row
-                    [ Element.centerX
-                    , Element.padding 12
+                    [ Element.padding 12
                     , Element.spacing 8
-                    , Font.size 16
+                    , Font.size fontSize
                     , Font.light
                     , Background.color Colours.white
                     , Border.color Colours.sunflower
                     , Border.rounded 15
                     , Border.width 1
+                    , Border.shadow
+                        { offset = ( 0, 0 )
+                        , size = 2
+                        , blur = 4
+                        , color = Colours.withAlpha 0.4 Colours.lightGray
+                        }
                     ]
                     [ Element.textColumn
                         [ Element.width Element.fill
@@ -107,11 +118,11 @@ view model =
                             [ Element.width Element.fill ]
                             [ Element.text "In Safari, tap "
                             , Element.image
-                                [ Element.height (Element.px 16)
+                                [ Element.height (Element.px fontSize)
                                 , Element.paddingXY 2 0
                                 ]
                                 { src = model.iosShareIcon
-                                , description = "Ios Share button"
+                                , description = "iOS Share button"
                                 }
                             , Element.text ", then 'Add to the homescreen.'"
                             ]
@@ -125,7 +136,7 @@ view model =
                     , Util.viewIcon
                         { icon = Icon.x
                         , color = Colours.sunset
-                        , size = 32
+                        , size = toFloat fontSize * 2
                         , msg = Just RemoveIosInstallPopup
                         , withBorder = False
                         }
@@ -141,11 +152,10 @@ view model =
     Element.column
         [ Element.width Element.fill
         , Element.height Element.fill
-        , Element.spacing 24
         , Element.paddingXY 0 16
+        , Element.inFront <| Element.el [ Element.centerX, Element.padding 8 ] iosInstallPopup
         ]
-        [ Element.el [ Element.paddingXY 8 0 ] iosInstallPopup
-        , case model.state of
+        [ case model.state of
             Settings ->
                 settings model
 

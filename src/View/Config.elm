@@ -12,7 +12,7 @@ module View.Config exposing
 import Browser.Events
 import Colours
 import Data.Config as Data
-import Data.Duration as Duration exposing (Duration)
+import Data.Duration as Duration
 import Data.Flags as Flags exposing (Flags)
 import Dict
 import Element exposing (Element)
@@ -80,7 +80,7 @@ init flags =
 
 
 
--- helpers
+-- Public Helpers
 
 
 encode : Config -> Json.Encode.Value
@@ -91,40 +91,6 @@ encode (Config _ data) =
 getData : Config -> Data.Data
 getData (Config _ data) =
     data
-
-
-
--- internal helpers
-
-
-totalTime : Data.Data -> Duration
-totalTime data =
-    let
-        setsDuration =
-            Dict.toList data.sets
-                |> List.map Tuple.second
-                |> List.map
-                    (Set.totalTime
-                        { exerciseDuration = TimeInput.getDuration data.exerciseInput
-                        , breakDuration = TimeInput.getDuration data.breakInput
-                        }
-                    )
-                |> List.foldl Duration.add (Duration.init 0)
-
-        breaksDuration =
-            TimeInput.getDuration data.setBreakInput
-                |> Duration.multiply (Dict.size data.sets - 1)
-                |> Duration.clampBelow (Duration.init 0)
-
-        countdownDuration =
-            if data.countdown then
-                TimeInput.getDuration data.countdownInput
-
-            else
-                Duration.init 0
-    in
-    [ setsDuration, breaksDuration, countdownDuration ]
-        |> List.foldl Duration.add (Duration.init 0)
 
 
 
@@ -258,6 +224,7 @@ view (Config model data) =
                         , Element.onLeft countdownLabel
                         , Element.centerX
                         , Element.height (Element.px 64)
+                        , Element.padding 4
                         ]
                         Element.none
                 ]
@@ -275,7 +242,7 @@ view (Config model data) =
                 , Font.light
                 ]
                 [ Element.text "Total time: "
-                , totalTime data
+                , Data.totalTime data
                     |> Duration.viewFancy
                     |> Element.el
                         [ Font.color Colours.sunflower ]

@@ -156,6 +156,7 @@ view options (TimeInput data) =
                     , Element.onLeft l
                     , Element.centerX
                     , Element.height (Element.px 64)
+                    , Element.padding 4
                     ]
                     Element.none
 
