@@ -126,7 +126,7 @@ view (Application model data) =
 viewStarting : Data.WorkoutData -> Model -> Element Msg
 viewStarting workoutData model =
     let
-        title n =
+        title n showInfo =
             Element.column
                 [ Element.spacing 64 ]
                 [ Element.paragraph
@@ -135,8 +135,13 @@ viewStarting workoutData model =
                     , Font.color Colours.sunset
                     ]
                     [ Element.text "Ready?" ]
-                , info 30
+                , if showInfo then
+                    info (n // 2)
+
+                  else
+                    Element.none
                 ]
+                |> Util.surround 1 5 1
 
         info n =
             Element.paragraph
@@ -198,6 +203,7 @@ viewStarting workoutData model =
 
             else
                 Element.paragraph attrs [ heading, message ]
+                    |> Util.surround 1 4 1
     in
     -- I have to use Util.centerOverlay to ensure that both the upper and lower blocks are the SAME height
     if Util.isVerticalPhone model.device then
@@ -209,7 +215,9 @@ viewStarting workoutData model =
             [ Element.el
                 [ Element.height Element.fill
                 , Element.width Element.fill
-                , Util.centerOverlay <| title 50
+
+                -- don't show info on phones
+                , Util.centerOverlay <| title 50 False
                 ]
                 Element.none
             , Element.el [ Element.centerX ] startExerciseButton
@@ -240,8 +248,8 @@ viewStarting workoutData model =
 
                     Element.Portrait ->
                         { parentElem = Element.column
-                        , titleSize = 50
-                        , subTitleElem = subTitle 20 False
+                        , titleSize = model.screenDimensions.height // 18
+                        , subTitleElem = subTitle (model.screenDimensions.height // 36) False
                         , subTitleSurround = identity
                         , startExerciseButtonParent =
                             Element.el
@@ -257,7 +265,7 @@ viewStarting workoutData model =
             [ Element.el
                 [ Element.width Element.fill
                 , Element.height Element.fill
-                , Util.centerOverlay <| title data.titleSize
+                , Util.centerOverlay <| title data.titleSize True
                 ]
                 Element.none
             , data.startExerciseButtonParent
@@ -282,58 +290,72 @@ viewInProgress workoutData model data =
             else
                 Icon.play
 
-        pebbles currBlockColour { secsLeft, totalTime } =
+        -- maybeData is Just { secsLeft, totalTime }  when it's a larger screen that can hold that data
+        pebbles currBlockColour maybeData =
             let
                 currExerciseNum =
                     List.Nonempty.length workoutData.blocksLeft
+
+                regularPebble height color =
+                    Element.el
+                        [ Element.width Element.fill
+                        , Element.centerY
+                        , Element.height (Element.px height)
+                        , Border.rounded 3
+                        , Background.color color
+                        ]
+                        Element.none
 
                 viewPebble n =
                     let
                         -- if the user is not on a phone, we'll make it have the little timer bar for the current pebble
                         specialPebble height colour =
-                            Element.row
-                                [ Element.width Element.fill
-                                , Element.centerY
-                                , Element.height (Element.px height)
-                                , Border.rounded 3
-                                , Border.width 1
-                                , Border.color colour
-                                ]
-                                [ Element.el
-                                    [ Element.width <| Element.fillPortion (totalTime - secsLeft) ]
-                                    Element.none
-                                , Element.el
-                                    [ Element.width <| Element.fillPortion secsLeft
-                                    , Element.height (Element.px height)
-                                    , Background.color colour
-                                    , Border.rounded 3
-                                    ]
-                                    Element.none
-                                ]
+                            case maybeData of
+                                Just { secsLeft, totalTime } ->
+                                    Element.row
+                                        [ Element.width Element.fill
+                                        , Element.centerY
+                                        , Element.height (Element.px height)
+                                        , Border.rounded <| height // 3
+                                        , Border.width 1
+                                        , Border.color colour
+                                        ]
+                                        [ Element.el
+                                            [ Element.width <| Element.fillPortion (totalTime - secsLeft) ]
+                                            Element.none
+                                        , Element.el
+                                            [ Element.width <| Element.fillPortion secsLeft ]
+                                          <|
+                                            regularPebble height colour
+                                        ]
+
+                                Nothing ->
+                                    regularPebble height colour
+
+                        ( regHeight, specialHeight ) =
+                            case maybeData of
+                                Just _ ->
+                                    ( 10, 16 )
+
+                                _ ->
+                                    ( 5, 9 )
 
                         ( pebbleHeight, pebbleColour, useSpecial ) =
                             if n == currExerciseNum then
                                 -- this pebble represents the current exercise
-                                ( 9, currBlockColour, True )
+                                ( specialHeight, currBlockColour, True )
 
                             else if n > currExerciseNum then
-                                ( 5, Colours.lightGray, False )
+                                ( regHeight, Colours.lightGray, False )
 
                             else
-                                ( 5, Colours.withAlpha 0.6 Colours.sky, False )
+                                ( regHeight, Colours.withAlpha 0.6 Colours.sky, False )
                     in
                     if useSpecial then
                         specialPebble pebbleHeight pebbleColour
 
                     else
-                        Element.el
-                            [ Element.width Element.fill
-                            , Element.centerY
-                            , Element.height (Element.px pebbleHeight)
-                            , Border.rounded 3
-                            , Background.color pebbleColour
-                            ]
-                            Element.none
+                        regularPebble pebbleHeight pebbleColour
             in
             List.range 1 workoutData.info.totalTimeblocks
                 |> List.reverse
@@ -343,7 +365,8 @@ viewInProgress workoutData model data =
                     , Element.width Element.fill
                     ]
 
-        viewPhone =
+        -- isSmall is true if it's a phone or something or something
+        viewPortrait isSmall =
             let
                 bigFont size color label =
                     Element.paragraph
@@ -355,24 +378,43 @@ viewInProgress workoutData model data =
                         ]
                         [ Element.text label ]
 
+                -- the sizes of the elements
+                sizesData =
+                    if isSmall then
+                        { title = 32
+                        , exercise = 48
+                        , buttonMaxWidth = 150
+                        , buttonIcon = 30
+                        , nextUp = 20
+                        }
+
+                    else
+                        { title = 48
+                        , exercise = 64
+                        , buttonMaxWidth = 250
+                        , buttonIcon = 50
+                        , nextUp = 35
+                        }
+
+                -- what elements to show
                 dataGroup =
                     case List.Nonempty.head workoutData.blocksLeft of
                         Data.CountDown secsLeft totalTime ->
-                            { currBlockElem = bigFont 32 Colours.sky "Countdown"
+                            { currBlockElem = bigFont sizesData.title Colours.sky "Countdown"
                             , themeColour = Colours.sky
                             , secsLeft = secsLeft
                             , totalTime = totalTime
                             }
 
                         Data.ExerciseBreak secsLeft totalTime ->
-                            { currBlockElem = bigFont 32 Colours.grass "Break Between Exercises"
+                            { currBlockElem = bigFont sizesData.title Colours.grass "Break Between Exercises"
                             , themeColour = Colours.grass
                             , secsLeft = secsLeft
                             , totalTime = totalTime
                             }
 
                         Data.SetBreak secsLeft totalTime ->
-                            { currBlockElem = bigFont 32 Colours.grass "Break Between Sets"
+                            { currBlockElem = bigFont sizesData.title Colours.grass "Break Between Sets"
                             , themeColour = Colours.grass
                             , secsLeft = secsLeft
                             , totalTime = totalTime
@@ -386,8 +428,8 @@ viewInProgress workoutData model data =
                                     , Font.center
                                     , Font.color Colours.sky
                                     ]
-                                    [ bigFont 32 Colours.sunflower setName
-                                    , bigFont 48 Colours.sunset name
+                                    [ bigFont sizesData.title Colours.sunflower setName
+                                    , bigFont sizesData.exercise Colours.sunset name
                                     ]
                             , themeColour = Colours.sunset
                             , secsLeft = secsLeft
@@ -430,10 +472,10 @@ viewInProgress workoutData model data =
                             Element.none
                         , -- play/pause toggle
                           Input.button
-                            [ Element.width (Element.maximum 150 Element.fill)
+                            [ Element.width (Element.maximum sizesData.buttonMaxWidth Element.fill)
                             , Element.height Element.shrink
                             , Element.centerX
-                            , Border.rounded 15
+                            , Border.rounded <| sizesData.buttonMaxWidth // 10
                             , Background.color Colours.sky
                             ]
                             { onPress = Just TogglePlay
@@ -446,7 +488,7 @@ viewInProgress workoutData model data =
                                     Util.viewIcon
                                         { icon = playPauseIcon
                                         , color = Colours.white
-                                        , size = 30
+                                        , size = sizesData.buttonIcon
                                         , msg = Nothing
                                         , withBorder = False
                                         }
@@ -456,7 +498,7 @@ viewInProgress workoutData model data =
                         , Element.paragraph
                             [ Element.height Element.shrink
                             , Font.center
-                            , Font.size 20
+                            , Font.size sizesData.nextUp
                             , Font.light
                             , Font.color Colours.sky
                             ]
@@ -465,10 +507,15 @@ viewInProgress workoutData model data =
                             ]
 
                         -- instagram-like timeline thing
-                        , pebbles dataGroup.themeColour
-                            { secsLeft = dataGroup.secsLeft
-                            , totalTime = dataGroup.totalTime
-                            }
+                        , pebbles dataGroup.themeColour <|
+                            if isSmall then
+                                Nothing
+
+                            else
+                                Just
+                                    { secsLeft = dataGroup.secsLeft
+                                    , totalTime = dataGroup.totalTime
+                                    }
                         , Element.el
                             [ Element.width Element.fill
                             , Element.height (Element.px 1)
@@ -505,7 +552,7 @@ viewInProgress workoutData model data =
                     bottomElems
                 ]
 
-        viewDesktop =
+        viewLandscape =
             let
                 bigFont size color label =
                     Element.el
@@ -606,9 +653,11 @@ viewInProgress workoutData model data =
                         , Element.paddingXY 0 16
                         ]
                         (pebbles dataGroup.themeColour
-                            { secsLeft = dataGroup.secsLeft
-                            , totalTime = dataGroup.totalTime
-                            }
+                            (Just
+                                { secsLeft = dataGroup.secsLeft
+                                , totalTime = dataGroup.totalTime
+                                }
+                            )
                         )
                 ]
                 [ Element.row
@@ -646,16 +695,12 @@ viewInProgress workoutData model data =
                     ]
                 ]
     in
-    if Util.isVerticalPhone model.device then
-        viewPhone
+    case model.device.orientation of
+        Element.Portrait ->
+            viewPortrait <| Util.isVerticalPhone model.device
 
-    else
-        case model.device.orientation of
-            Element.Portrait ->
-                Element.text "Portrait mode coming soon lmao"
-
-            Element.Landscape ->
-                viewDesktop
+        Element.Landscape ->
+            viewLandscape
 
 
 viewFinished : Element Msg
