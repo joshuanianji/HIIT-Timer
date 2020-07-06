@@ -3,10 +3,6 @@ html::-webkit-scrollbar{
     display: none;
 }
 
-/* no clicks in input lol */
-input {
-    pointer-events:none;
-}
 .no-cursor {
     cursor: none;
     caret-color: transparent;
@@ -34,11 +30,11 @@ input[type=number] {
 }
 
 /* ree */
-.blink_text {
+.blinking {
 
-    animation:1s blinker linear infinite;
-    -webkit-animation:1s blinker linear infinite;
-    -moz-animation:1s blinker linear infinite;
+    animation:1s blinker steps(1) infinite;
+    -webkit-animation:1s blinker steps(1) infinite;
+    -moz-animation:1s blinker steps(1) infinite;
 
      color: red;
 }

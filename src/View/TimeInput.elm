@@ -125,6 +125,7 @@ view options (TimeInput data) =
                                     , Element.padding 8
                                     , Element.height Element.fill
                                     , Element.alignRight
+                                    , Element.htmlAttribute <| Html.Attributes.class "blinking"
                                     ]
                                     (Element.el
                                         [ Element.height Element.fill
