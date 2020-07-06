@@ -14,11 +14,11 @@ import Browser.Events
 import Colours
 import Data.Application as Data exposing (Data)
 import Data.Config
+import Data.Duration as Duration
 import Data.Flags as Flags exposing (Flags)
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
-import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
 import FeatherIcons as Icon
@@ -127,19 +127,32 @@ viewStarting : Data.WorkoutData -> Model -> Element Msg
 viewStarting workoutData model =
     let
         title n =
-            Element.paragraph
-                [ Font.size n
-                , Font.center
-                , Font.color Colours.sunset
+            Element.column
+                [ Element.spacing 64 ]
+                [ Element.paragraph
+                    [ Font.size n
+                    , Font.center
+                    , Font.color Colours.sunset
+                    ]
+                    [ Element.text "Ready?" ]
+                , info 30
                 ]
-                [ Element.text "Ready?" ]
 
         info n =
             Element.paragraph
                 [ Font.light
                 , Font.size n
+                , Font.center
+                , Font.color Colours.sunset
                 ]
-                []
+                [ Element.text "Your workout is "
+                , String.fromInt workoutData.info.totalExercises
+                    ++ " exercises long, "
+                    |> Element.text
+                    |> Element.el [ Font.color Colours.sunflower ]
+                , Element.text "totalling "
+                , Element.el [ Font.color Colours.sunflower ] <| Duration.viewFancy workoutData.info.totalTime
+                ]
 
         startExerciseButton =
             Util.viewIcon

@@ -179,8 +179,15 @@ fromConfig configData =
                     )
 
         -- the static information about the workout
+        setDictFold currSet acc =
+            let
+                set =
+                    Set.getData currSet
+            in
+            acc + set.repeat * Dict.size set.exercises
+
         workoutInfo =
-            { totalExercises = Dict.foldl (\key set acc -> acc + Dict.size (.exercises <| Set.getData set)) 0 configData.sets
+            { totalExercises = Dict.foldl (always setDictFold) 0 configData.sets
             , totalSets = Dict.size configData.sets
             , totalTimeblocks =
                 Maybe.map List.Nonempty.length exercises
