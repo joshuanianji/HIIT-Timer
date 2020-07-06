@@ -90,7 +90,16 @@ view options (TimeInput data) =
             Input.text
                 [ Element.width (Element.px 175)
                 , Element.padding 24
-                , Element.htmlAttribute <| Html.Attributes.type_ "number"
+
+                -- works for android
+                , Element.htmlAttribute <| Html.Attributes.type_ "text"
+                , Element.htmlAttribute <| Html.Attributes.class "no-cursor"
+
+                -- for iOS maybe
+                , Element.htmlAttribute <| Html.Attributes.attribute "inputmode" "numeric"
+                , Element.htmlAttribute <| Html.Attributes.attribute "pattern" "[0-9]*"
+
+                -- idk if this is even useful tbh
                 , Element.htmlAttribute <| Html.Attributes.min "0"
 
                 -- FONT SIZE 0 HIDES THE STUPID UGLY BEHIND-THE-SCENES TEXT
