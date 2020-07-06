@@ -1,18 +1,6 @@
 module Data.LocalStorageConfig exposing (Data, decode, encode)
 
-{-| types of all of our config data that's compatible with JSON
-
-type alias Config =
-{ exerciseInput : TimeInput
-, breakInput : TimeInput
-, setBreakInput : TimeInput
-, countdown : Bool
-, countdownInput : TimeInput
-, set : Dict Int Set
--- so we won't get duplicate set positions - the set counter NEVER decreases
-, setCounter : Int
-}
-
+{-| types of all of our config data that's compatible with JSON and have to be stored
 -}
 
 import Dict exposing (Dict)
@@ -29,6 +17,7 @@ type alias Data =
     , countdownInput : Int
     , sets : Dict Int Set
     , setCounter : Int
+    , speak : Bool
     }
 
 
@@ -66,6 +55,7 @@ encode data =
         , ( "countdownInput", Encode.int data.countdownInput )
         , ( "set", Encode.dict String.fromInt encodeSet data.sets )
         , ( "setCounter", Encode.int data.setCounter )
+        , ( "speak", Encode.bool data.speak )
         ]
 
 
@@ -103,6 +93,7 @@ decode =
         |> Pipeline.required "countdownInput" Decode.int
         |> Pipeline.required "set" (dictIntDecoder setDecoder)
         |> Pipeline.required "setCounter" Decode.int
+        |> Pipeline.optional "speak" Decode.bool False
 
 
 setDecoder : Decoder Set

@@ -15,8 +15,11 @@ import whistleFile from './assets/sounds/whistle.mp3';
 import { Elm } from './Main.elm';
 import * as serviceWorker from './serviceWorker';
 
-// iOS "Add to home screen" popup
+// for the window to s p e a k
+var synth = window.speechSynthesis;
 
+
+// iOS "Add to home screen" popup
 // Detects if device is on iOS 
 const isIos = () => {
     const userAgent = window.navigator.userAgent.toLowerCase();
@@ -88,6 +91,13 @@ app.ports.playTada.subscribe(() => {
 app.ports.playTick.subscribe(() => {
     tick.play()
 });
+
+app.ports.speak.subscribe(value => {
+    let speaker = new SpeechSynthesisUtterance(value);
+    // #49 is Google US English
+    speaker.voice = synth.getVoices()[49]
+    synth.speak(speaker);
+})
 
 // If you want your app to work offline and load faster, you can change
 // unregister() to register() below. Note this comes with some pitfalls.

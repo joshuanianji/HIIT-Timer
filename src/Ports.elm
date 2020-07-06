@@ -1,4 +1,4 @@
-port module Ports exposing (playTada, playTick, playWhistle, storeConfig, storeConfigSuccess)
+port module Ports exposing (playTada, playTick, playWhistle, speak, storeConfig, storeConfigSuccess)
 
 import Json.Encode
 
@@ -16,3 +16,10 @@ port playTada : () -> Cmd msg
 
 
 port playTick : () -> Cmd msg
+
+
+
+-- speaker stuff
+
+
+port speak : String -> Cmd msg

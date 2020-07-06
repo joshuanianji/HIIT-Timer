@@ -16,6 +16,7 @@ import Data.Application as Data exposing (Data)
 import Data.Config
 import Data.Duration as Duration
 import Data.Flags as Flags exposing (Flags)
+import Data.TimeBlock as TimeBlock
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
@@ -95,10 +96,11 @@ exercising (Application _ data) =
 
 
 endWorkout : Application -> Application
-endWorkout (Application model _) =
+endWorkout (Application model data) =
     Application model
-        { playing = False
-        , state = Data.Finished
+        { data
+            | playing = False
+            , state = Data.Finished
         }
 
 
@@ -399,28 +401,28 @@ viewInProgress workoutData model data =
                 -- what elements to show
                 dataGroup =
                     case List.Nonempty.head workoutData.blocksLeft of
-                        Data.CountDown secsLeft totalTime ->
+                        TimeBlock.CountDown secsLeft totalTime ->
                             { currBlockElem = bigFont sizesData.title Colours.sky "Countdown"
                             , themeColour = Colours.sky
                             , secsLeft = secsLeft
                             , totalTime = totalTime
                             }
 
-                        Data.ExerciseBreak secsLeft totalTime ->
+                        TimeBlock.ExerciseBreak secsLeft totalTime ->
                             { currBlockElem = bigFont sizesData.title Colours.grass "Break Between Exercises"
                             , themeColour = Colours.grass
                             , secsLeft = secsLeft
                             , totalTime = totalTime
                             }
 
-                        Data.SetBreak secsLeft totalTime ->
+                        TimeBlock.SetBreak secsLeft totalTime ->
                             { currBlockElem = bigFont sizesData.title Colours.grass "Break Between Sets"
                             , themeColour = Colours.grass
                             , secsLeft = secsLeft
                             , totalTime = totalTime
                             }
 
-                        Data.Exercise { setName, name, duration, secsLeft } ->
+                        TimeBlock.Exercise { setName, name, duration, secsLeft } ->
                             { currBlockElem =
                                 Element.column
                                     [ Element.centerX
@@ -438,13 +440,13 @@ viewInProgress workoutData model data =
 
                 nextupString =
                     case List.head <| List.Nonempty.tail workoutData.blocksLeft of
-                        Just (Data.ExerciseBreak _ _) ->
+                        Just (TimeBlock.ExerciseBreak _ _) ->
                             "Break"
 
-                        Just (Data.SetBreak _ _) ->
+                        Just (TimeBlock.SetBreak _ _) ->
                             "Break"
 
-                        Just (Data.Exercise d) ->
+                        Just (TimeBlock.Exercise d) ->
                             d.name
 
                         _ ->
@@ -576,7 +578,7 @@ viewInProgress workoutData model data =
 
                 dataGroup =
                     case List.Nonempty.head workoutData.blocksLeft of
-                        Data.CountDown secsLeft totalTime ->
+                        TimeBlock.CountDown secsLeft totalTime ->
                             { currExercise = bigFont 54 Colours.sky "Countdown"
                             , timerText = timerText secsLeft Colours.sky
                             , themeColour = Colours.sky
@@ -584,7 +586,7 @@ viewInProgress workoutData model data =
                             , totalTime = totalTime
                             }
 
-                        Data.ExerciseBreak secsLeft totalTime ->
+                        TimeBlock.ExerciseBreak secsLeft totalTime ->
                             { currExercise = bigFont 54 Colours.grass "Break Between Exercise"
                             , timerText = timerText secsLeft Colours.grass
                             , themeColour = Colours.grass
@@ -592,7 +594,7 @@ viewInProgress workoutData model data =
                             , totalTime = totalTime
                             }
 
-                        Data.SetBreak secsLeft totalTime ->
+                        TimeBlock.SetBreak secsLeft totalTime ->
                             { currExercise = bigFont 54 Colours.grass "Break Between Sets"
                             , timerText = timerText secsLeft Colours.grass
                             , themeColour = Colours.grass
@@ -600,7 +602,7 @@ viewInProgress workoutData model data =
                             , totalTime = totalTime
                             }
 
-                        Data.Exercise { setName, name, duration, secsLeft } ->
+                        TimeBlock.Exercise { setName, name, duration, secsLeft } ->
                             { currExercise =
                                 Element.column
                                     [ Element.centerX
@@ -619,13 +621,13 @@ viewInProgress workoutData model data =
 
                 nextupString =
                     case List.head <| List.Nonempty.tail workoutData.blocksLeft of
-                        Just (Data.ExerciseBreak _ _) ->
+                        Just (TimeBlock.ExerciseBreak _ _) ->
                             "Break"
 
-                        Just (Data.SetBreak _ _) ->
+                        Just (TimeBlock.SetBreak _ _) ->
                             "Break"
 
-                        Just (Data.Exercise d) ->
+                        Just (TimeBlock.Exercise d) ->
                             d.name
 
                         _ ->
@@ -809,7 +811,14 @@ update msg (Application model data) =
                     | state = Data.InProgress workoutData
                     , playing = True
                 }
-            , Ports.playWhistle ()
+            , Cmd.batch
+                [ Ports.playWhistle ()
+                , if data.speak then
+                    Ports.speak "Workout Started"
+
+                  else
+                    Cmd.none
+                ]
             )
 
         NextSecond ->
@@ -819,26 +828,48 @@ update msg (Application model data) =
                         ( block, tl ) =
                             ( List.Nonempty.head workoutData.blocksLeft, List.Nonempty.tail workoutData.blocksLeft )
                     in
-                    case Data.decreaseTimeBlock block of
+                    case TimeBlock.decreaseSecond block of
                         Nothing ->
                             case tl of
                                 -- no more exercises
                                 [] ->
-                                    ( Application model { data | state = Data.Finished }, Ports.playTada () )
+                                    ( Application model { data | state = Data.Finished }
+                                    , Cmd.batch
+                                        [ Ports.playTada ()
+                                        , if data.speak then
+                                            Ports.speak "Congratulations! Workout complete."
+
+                                          else
+                                            Cmd.none
+                                        ]
+                                    )
 
                                 x :: xs ->
-                                    ( Application model { data | state = Data.InProgress { workoutData | blocksLeft = Nonempty x xs } }, Ports.playWhistle () )
+                                    ( Application model
+                                        { data | state = Data.InProgress { workoutData | blocksLeft = Nonempty x xs } }
+                                    , Cmd.batch
+                                        [ Ports.playWhistle ()
+                                        , if data.speak then
+                                            Ports.speak <| TimeBlock.toSpokenString x
+
+                                          else
+                                            Cmd.none
+                                        ]
+                                    )
 
                         Just newBlock ->
                             let
                                 cmd =
-                                    if Data.timeLeft newBlock <= 3 then
+                                    if TimeBlock.timeLeft newBlock <= 3 then
                                         Ports.playTick ()
 
                                     else
                                         Cmd.none
                             in
-                            ( Application model { data | state = Data.InProgress { workoutData | blocksLeft = Nonempty newBlock tl } }, cmd )
+                            ( Application model
+                                { data | state = Data.InProgress { workoutData | blocksLeft = Nonempty newBlock tl } }
+                            , cmd
+                            )
 
                 _ ->
                     -- ignore

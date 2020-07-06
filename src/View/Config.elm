@@ -21,6 +21,7 @@ import Element.Font as Font
 import Element.Input as Input
 import Element.Lazy as Lazy
 import FeatherIcons as Icon
+import Html.Attributes
 import Json.Decode
 import Json.Encode
 import Modules.Exercise as Exercise
@@ -157,38 +158,17 @@ view (Config model data) =
 
                 -- countdown
                 , let
-                    countdownLabel =
-                        Input.checkbox
-                            [ Font.light
-                            , Element.padding 4
+                    countdownToggle =
+                        Element.el
+                            [ Element.centerY
+                            , Element.centerX
                             ]
-                            { onChange = ToggleCountdown
-                            , icon =
-                                \on ->
-                                    if on then
-                                        Util.viewIcon
-                                            { icon = Icon.checkSquare
-                                            , color = Colours.grass
-                                            , size = 30
-                                            , msg = Nothing
-                                            , withBorder = False
-                                            }
-
-                                    else
-                                        Util.viewIcon
-                                            { icon = Icon.xSquare
-                                            , color = Colours.sunset
-                                            , size = 30
-                                            , msg = Nothing
-                                            , withBorder = False
-                                            }
-                            , checked = data.countdown
-                            , label = Input.labelLeft [ Element.padding 8, Element.centerY ] <| Element.text "Countdown:"
-                            }
-                            |> Element.el
-                                [ Element.centerY
-                                , Element.centerX
-                                ]
+                        <|
+                            checkbox
+                                { onChange = ToggleCountdown
+                                , checked = data.countdown
+                                , label = "Countdown:"
+                                }
 
                     countdownInput =
                         if data.countdown then
@@ -212,7 +192,7 @@ view (Config model data) =
                         [ Element.spacing 8
                         , Element.centerX
                         ]
-                        [ countdownLabel
+                        [ countdownToggle
                         , countdownInput
                         ]
 
@@ -221,10 +201,37 @@ view (Config model data) =
                     Element.el
                         [ Element.onRight <|
                             Element.el [ Element.centerY ] countdownInput
-                        , Element.onLeft countdownLabel
+                        , Element.onLeft countdownToggle
                         , Element.centerX
                         , Element.height (Element.px 64)
                         , Element.padding 4
+                        ]
+                        Element.none
+
+                -- speak
+                , let
+                    speakToggle =
+                        Element.el
+                            [ Element.centerY
+                            , Element.centerX
+                            ]
+                        <|
+                            checkbox
+                                { onChange = ToggleSpeak
+                                , checked = data.speak
+                                , label = "Use Speech Synthesis:"
+                                }
+                  in
+                  if Util.isVerticalPhone model.device then
+                    speakToggle
+
+                  else
+                    Element.el
+                        [ Element.centerX
+                        , Element.padding 4
+                        , Element.height (Element.px 64)
+                        , Element.onLeft <|
+                            Element.el [ Element.centerY ] speakToggle
                         ]
                         Element.none
                 ]
@@ -319,6 +326,48 @@ view (Config model data) =
 
 
 
+-- my own checkmark
+
+
+checkbox : { onChange : Bool -> Msg, checked : Bool, label : String } -> Element Msg
+checkbox data =
+    Input.checkbox
+        [ Font.light
+        , Element.padding 4
+        ]
+        { onChange = data.onChange
+        , icon =
+            \on ->
+                if on then
+                    Util.viewIcon
+                        { icon = Icon.checkSquare
+                        , color = Colours.grass
+                        , size = 30
+                        , msg = Nothing
+                        , withBorder = False
+                        }
+
+                else
+                    Util.viewIcon
+                        { icon = Icon.xSquare
+                        , color = Colours.sunset
+                        , size = 30
+                        , msg = Nothing
+                        , withBorder = False
+                        }
+        , checked = data.checked
+        , label =
+            Input.labelLeft
+                [ Element.padding 8
+                , Element.centerY
+                , Element.htmlAttribute <| Html.Attributes.class "no-select"
+                ]
+            <|
+                Element.text data.label
+        }
+
+
+
 ---- UPDATE ----
 
 
@@ -336,6 +385,7 @@ type Msg
     | UpdateSetName Int String
     | UpdateExerciseName Int Int String
     | ToggleCountdown Bool
+    | ToggleSpeak Bool
     | ToLocalStorage -- save to local storage
     | StoreConfigSuccess -- when local storage succeeds
 
@@ -411,6 +461,10 @@ update msg (Config model data) =
 
         ToggleCountdown bool ->
             Config model { data | countdown = bool }
+                |> saveToLocalStorage
+
+        ToggleSpeak bool ->
+            Config model { data | speak = bool }
                 |> saveToLocalStorage
 
         NewElement setPos ->

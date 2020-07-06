@@ -32,6 +32,7 @@ type alias Data =
     -- so we won't get duplicate set positions - the set counter NEVER decreases
     , setCounter : Int
     , error : Maybe String
+    , speak : Bool
     }
 
 
@@ -74,6 +75,7 @@ fromLocalStorage lsConfig =
     , sets = Dict.map (always fromLocalStorageSet) lsConfig.sets
     , setCounter = lsConfig.setCounter
     , error = Nothing
+    , speak = lsConfig.speak
     }
 
 
@@ -108,6 +110,7 @@ encode data =
     , countdownInput = Duration.toSeconds <| TimeInput.getDuration data.countdownInput
     , sets = Dict.map fromSet data.sets
     , setCounter = data.setCounter
+    , speak = data.speak
     }
         |> LocalStorageConfig.encode
 
@@ -127,6 +130,7 @@ default =
     , sets = setDict
     , setCounter = 1
     , error = Nothing
+    , speak = False
     }
 
 
