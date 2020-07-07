@@ -32,7 +32,10 @@ type alias Data =
     -- so we won't get duplicate set positions - the set counter NEVER decreases
     , setCounter : Int
     , error : Maybe String
+
+    -- config for sounds
     , speak : Bool
+    , sounds : Bool
     }
 
 
@@ -76,6 +79,7 @@ fromLocalStorage lsConfig =
     , setCounter = lsConfig.setCounter
     , error = Nothing
     , speak = lsConfig.speak
+    , sounds = lsConfig.sounds
     }
 
 
@@ -111,6 +115,7 @@ encode data =
     , sets = Dict.map fromSet data.sets
     , setCounter = data.setCounter
     , speak = data.speak
+    , sounds = data.sounds
     }
         |> LocalStorageConfig.encode
 
@@ -131,6 +136,7 @@ default =
     , setCounter = 1
     , error = Nothing
     , speak = False
+    , sounds = True
     }
 
 

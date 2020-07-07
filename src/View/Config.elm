@@ -78,7 +78,7 @@ init flags =
         model =
             { device = Element.classifyDevice flags.windowSize
             , saving = False
-            , speechSynthesisPopup = True
+            , speechSynthesisPopup = False
             }
     in
     Config model { actualData | error = mErr }
@@ -118,7 +118,7 @@ view (Config model data) =
         , Element.centerX
         , Element.height Element.fill
         , Element.paddingXY paddingX 32
-        , Element.spacing 48
+        , Element.spacing 52
         , Element.inFront <| speechSynthesisPopup model
         ]
         [ Util.viewIcon
@@ -132,195 +132,9 @@ view (Config model data) =
         , data.error
             |> Maybe.map Element.text
             |> Maybe.withDefault Element.none
-
-        -- actual settings stuff
-        , Element.column
-            [ Element.width Element.fill
-            , Element.spacing 8
-            ]
-            [ Element.column
-                [ Element.centerX
-                , Element.spacing 12
-                ]
-                [ TimeInput.view
-                    { displayText = Just "Exercise Duration:"
-                    , device = model.device
-                    }
-                    data.exerciseInput
-                    |> Element.map (UpdateTimeInput Exercise)
-                , TimeInput.view
-                    { displayText = Just "Break Between Exercises:"
-                    , device = model.device
-                    }
-                    data.breakInput
-                    |> Element.map (UpdateTimeInput Break)
-                , TimeInput.view
-                    { displayText = Just "Break Between Sets:"
-                    , device = model.device
-                    }
-                    data.setBreakInput
-                    |> Element.map (UpdateTimeInput SetBreak)
-
-                -- countdown
-                , let
-                    countdownToggle =
-                        Element.el
-                            [ Element.centerY
-                            , Element.centerX
-                            ]
-                        <|
-                            checkbox
-                                { onChange = ToggleCountdown
-                                , checked = data.countdown
-                                , label = "Countdown:"
-                                }
-
-                    countdownInput =
-                        if data.countdown then
-                            data.countdownInput
-                                |> TimeInput.view
-                                    { displayText = Nothing
-                                    , device = model.device
-                                    }
-                                |> Element.map (UpdateTimeInput Countdown)
-
-                        else
-                            Element.el
-                                [ Element.width <| Element.px 188
-                                , Element.padding 4
-                                ]
-                                Element.none
-                  in
-                  if Util.isVerticalPhone model.device then
-                    -- orient vertically
-                    Element.column
-                        [ Element.spacing 8
-                        , Element.centerX
-                        ]
-                        [ countdownToggle
-                        , countdownInput
-                        ]
-
-                  else
-                    -- orient horizontally (center the space between label and input)
-                    Element.el
-                        [ Element.onRight <|
-                            Element.el [ Element.centerY ] countdownInput
-                        , Element.onLeft countdownToggle
-
-                        -- HACK (to fix elm-ui bug #243)
-                        , Element.moveDown 0
-                        , Element.centerX
-                        , Element.height (Element.px 64)
-                        , Element.padding 4
-                        ]
-                        Element.none
-
-                -- speak
-                , let
-                    speakToggle =
-                        Element.row
-                            [ Element.centerY
-                            , Element.centerX
-                            ]
-                            [ checkbox
-                                { onChange = ToggleSpeak
-                                , checked = data.speak
-                                , label = "Use Speech Synthesis:"
-                                }
-                            , Util.viewIcon
-                                { icon = Icon.helpCircle
-                                , color = Colours.black
-                                , size = 20
-                                , msg = Just SpeechSynthesisToggle
-                                , withBorder = False
-                                }
-                                |> Element.el [ Element.pointer ]
-                            ]
-                  in
-                  if Util.isVerticalPhone model.device then
-                    speakToggle
-
-                  else
-                    Element.el
-                        [ Element.centerX
-                        , Element.padding 4
-                        , Element.height (Element.px 64)
-                        , Element.onLeft <|
-                            Element.el [ Element.centerY ] speakToggle
-
-                        -- HACK (to fix elm-ui bug #243)
-                        , Element.moveDown 0
-                        ]
-                        Element.none
-                ]
-            ]
-
-        -- set stuff
-        , Element.column
-            [ Element.width Element.fill
-            , Element.spacing 18
-            ]
-            [ -- total time
-              Element.row
-                [ Element.spacing 2
-                , Element.centerX
-                , Font.light
-                ]
-                [ Element.text "Total time: "
-                , Data.totalTime data
-                    |> Duration.viewFancy
-                    |> Element.el
-                        [ Font.color Colours.sunflower ]
-                ]
-            , Dict.toList
-                data.sets
-                |> List.map
-                    (\( _, set ) ->
-                        Lazy.lazy2
-                            Set.view
-                            { onNewExercise = NewElement
-
-                            -- exercise position then set position
-                            , onDeleteExercise = DeleteElement
-                            , onDelete = DeleteSet
-                            , onUpdateRepeat = NewSetRepeat
-                            , sanitizeRepeat = SanitizeRepeat
-                            , onCopy = CopySet
-                            , toggleExpand = ToggleSetExpand
-                            , updateName = UpdateSetName
-                            , updateExerciseName = UpdateExerciseName
-                            , exerciseDuration = TimeInput.getDuration data.exerciseInput
-                            , breakDuration = TimeInput.getDuration data.breakInput
-                            , device = model.device
-                            }
-                            set
-                    )
-                |> List.intersperse (Exercise.breakView <| TimeInput.getDuration data.setBreakInput)
-                |> Element.column
-                    [ Element.spacing 32
-                    , Element.width Element.fill
-                    ]
-
-            -- add set
-            , Element.el
-                [ Element.alignBottom
-                , Element.centerX
-                ]
-                (Util.viewIcon
-                    { icon = Icon.plus
-                    , color = Colours.sunflower
-                    , size = 40
-                    , msg = Just AddSet
-                    , withBorder = True
-                    }
-                    |> Element.el
-                        [ Element.alignBottom
-                        , Element.centerX
-                        , Background.color Colours.white
-                        ]
-                )
-            ]
+        , durations model data
+        , viewSounds model data
+        , viewSets model data
 
         -- If the settings is saved or not
         , Element.el
@@ -344,6 +158,242 @@ view (Config model data) =
         ]
 
 
+durations : Model -> Data.Data -> Element Msg
+durations model data =
+    Element.column
+        [ Element.centerX
+        , Element.spacing 12
+        ]
+        [ Util.viewIcon
+            { icon = Icon.clock
+            , color = Colours.sunset
+            , size = 40
+            , msg = Nothing
+            , withBorder = False
+            }
+        , TimeInput.view
+            { displayText = Just "Exercise Duration:"
+            , device = model.device
+            }
+            data.exerciseInput
+            |> Element.map (UpdateTimeInput ExerciseIpt)
+        , TimeInput.view
+            { displayText = Just "Break Between Exercises:"
+            , device = model.device
+            }
+            data.breakInput
+            |> Element.map (UpdateTimeInput BreakIpt)
+        , TimeInput.view
+            { displayText = Just "Break Between Sets:"
+            , device = model.device
+            }
+            data.setBreakInput
+            |> Element.map (UpdateTimeInput SetBreakIpt)
+
+        -- countdown
+        , let
+            countdownToggle =
+                Element.el
+                    [ Element.centerY
+                    , Element.centerX
+                    ]
+                <|
+                    checkbox
+                        { onChange = ToggleCheckbox CountdownCbx
+                        , checked = data.countdown
+                        , label = Element.text "Countdown:"
+                        }
+
+            countdownInput =
+                if data.countdown then
+                    data.countdownInput
+                        |> TimeInput.view
+                            { displayText = Nothing
+                            , device = model.device
+                            }
+                        |> Element.map (UpdateTimeInput CountdownIpt)
+
+                else
+                    Element.el
+                        [ Element.width <| Element.px 188
+                        , Element.padding 4
+                        ]
+                        Element.none
+          in
+          if Util.isVerticalPhone model.device then
+            -- orient vertically
+            Element.column
+                [ Element.spacing 8
+                , Element.centerX
+                ]
+                [ countdownToggle
+                , countdownInput
+                ]
+
+          else
+            -- orient horizontally (center the space between label and input)
+            Element.el
+                [ Element.onRight <|
+                    Element.el [ Element.centerY ] countdownInput
+                , Element.onLeft countdownToggle
+
+                -- HACK (to fix elm-ui bug #243)
+                , Element.moveDown 0
+                , Element.centerX
+                , Element.height (Element.px 64)
+                , Element.padding 4
+                ]
+                Element.none
+        ]
+
+
+viewSounds : Model -> Data.Data -> Element Msg
+viewSounds _ data =
+    let
+        helpIcon =
+            Util.viewIcon
+                { icon = Icon.helpCircle
+                , color = Colours.black
+                , size = 20
+                , msg = Just SpeechSynthesisToggle
+                , withBorder = False
+                }
+                |> Element.el
+                    [ Element.pointer
+                    ]
+
+        speechSynthCheckbox =
+            checkbox
+                { onChange = ToggleCheckbox SpeakCbx
+                , checked = data.speak
+                , label =
+                    Element.row
+                        [ Element.spacing 4 ]
+                        [ Element.text "Speech Synthesis:"
+                        , helpIcon
+                        ]
+                }
+                |> Element.el [ Element.centerX ]
+
+        defaultSoundsCheckbox =
+            checkbox
+                { onChange = ToggleCheckbox SoundsCbx
+                , checked = data.sounds
+                , label = Element.text "Default Sounds:"
+                }
+                |> Element.el [ Element.centerX ]
+
+        toggles =
+            Element.column
+                [ Element.spacing 8
+                , Element.centerX
+                ]
+                [ speechSynthCheckbox
+                , defaultSoundsCheckbox
+                ]
+    in
+    Element.column
+        [ Element.centerX
+        , Element.spacing 12
+        ]
+        [ Util.viewIcon
+            { icon = Icon.volume2
+            , color = Colours.sky
+            , size = 40
+            , msg = Nothing
+            , withBorder = False
+            }
+            |> Element.el [ Element.centerX ]
+        , toggles
+        , if not data.sounds && not data.speak then
+            Element.paragraph
+                [ Font.light
+                ]
+                [ Element.el [ Font.bold, Font.color Colours.sunset ] <| Element.text "Warning: "
+                , Element.text "Your workout will be completely silent."
+                ]
+
+          else
+            Element.none
+        ]
+
+
+viewSets : Model -> Data.Data -> Element Msg
+viewSets model data =
+    Element.column
+        [ Element.width Element.fill
+        , Element.spacing 18
+        ]
+        [ Util.viewIcon
+            { icon = Icon.zap
+            , color = Colours.sunflower
+            , size = 40
+            , msg = Nothing
+            , withBorder = False
+            }
+            |> Element.el [ Element.centerX ]
+        , -- total time
+          Element.row
+            [ Element.spacing 2
+            , Element.centerX
+            , Font.light
+            ]
+            [ Element.text "Total time: "
+            , Data.totalTime data
+                |> Duration.viewFancy
+                |> Element.el
+                    [ Font.color Colours.sunflower ]
+            ]
+        , Dict.toList
+            data.sets
+            |> List.map
+                (\( _, set ) ->
+                    Lazy.lazy2
+                        Set.view
+                        { onNewExercise = NewElement
+
+                        -- exercise position then set position
+                        , onDeleteExercise = DeleteElement
+                        , onDelete = DeleteSet
+                        , onUpdateRepeat = NewSetRepeat
+                        , sanitizeRepeat = SanitizeRepeat
+                        , onCopy = CopySet
+                        , toggleExpand = ToggleSetExpand
+                        , updateName = UpdateSetName
+                        , updateExerciseName = UpdateExerciseName
+                        , exerciseDuration = TimeInput.getDuration data.exerciseInput
+                        , breakDuration = TimeInput.getDuration data.breakInput
+                        , device = model.device
+                        }
+                        set
+                )
+            |> List.intersperse (Exercise.breakView <| TimeInput.getDuration data.setBreakInput)
+            |> Element.column
+                [ Element.spacing 32
+                , Element.width Element.fill
+                ]
+
+        -- add set
+        , Element.el
+            [ Element.alignBottom
+            , Element.centerX
+            ]
+            (Util.viewIcon
+                { icon = Icon.plus
+                , color = Colours.sunflower
+                , size = 40
+                , msg = Just AddSet
+                , withBorder = True
+                }
+                |> Element.el
+                    [ Element.alignBottom
+                    , Element.centerX
+                    , Background.color Colours.white
+                    ]
+            )
+        ]
+
+
 
 -- the popup when the user clicks the (?) on the speech synthesis toggle
 
@@ -356,23 +406,19 @@ speechSynthesisPopup model =
                 [ Element.spacing 16
                 , Element.width Element.fill
                 , Font.light
-                , Font.size 16
+                , Font.size 20
                 ]
                 [ Element.paragraph
                     [ Font.bold
                     , Font.size 32
                     ]
-                    [ Element.text "Speech Synthesis - What the Heck?" ]
+                    [ Element.text "Speech Synthesis" ]
                 , Element.paragraph []
-                    [ Element.text "Often times when working out, you will "
-                    , Element.el [ Font.bold ] <| Element.text "not"
-                    , Element.text " be looking at the screen. To aid with workouts, speech synthesis will literally tell you which exercises you should currently be doing!"
-                    ]
+                    [ Element.text "An experimental technology that would voice out the exercises and breaks as you work out." ]
                 , Element.paragraph
                     []
-                    [ Element.text "This relies on relatively new technology, and not all browsers support it. It will "
-                    , Element.el [ Font.bold ] <| Element.text "NOT"
-                    , Element.text " work on Internet Explorer or Opera for Android, but if you're still using Internet Explorer a lot of things won't be working for you in this app anyway lol."
+                    [ Element.el [ Font.bold ] <| Element.text "NOTE: "
+                    , Element.text "This will not work on Internet Explorer. "
                     ]
                 ]
 
@@ -423,7 +469,7 @@ speechSynthesisPopup model =
 -- my own checkmark
 
 
-checkbox : { onChange : Bool -> Msg, checked : Bool, label : String } -> Element Msg
+checkbox : { onChange : Bool -> Msg, checked : Bool, label : Element Msg } -> Element Msg
 checkbox data =
     Input.checkbox
         [ Font.light
@@ -456,8 +502,7 @@ checkbox data =
                 , Element.centerY
                 , Element.htmlAttribute <| Html.Attributes.class "no-select"
                 ]
-            <|
-                Element.text data.label
+                data.label
         }
 
 
@@ -468,6 +513,7 @@ checkbox data =
 type Msg
     = NewWindowSize Int Int
     | UpdateTimeInput Input TimeInput.Msg
+    | ToggleCheckbox Checkbox Bool
     | NewElement Int
     | DeleteElement Int Int
     | NewSetRepeat Int String
@@ -478,22 +524,26 @@ type Msg
     | ToggleSetExpand Int
     | UpdateSetName Int String
     | UpdateExerciseName Int Int String
-    | ToggleCountdown Bool
-    | ToggleSpeak Bool
     | SpeechSynthesisToggle -- opens and closes info popup
     | ToLocalStorage -- save to local storage
     | StoreConfigSuccess -- when local storage succeeds
 
 
 
--- helps me differentiate between the different focuses
+-- helps me differentiate between the different config stuff
 
 
 type Input
-    = Exercise
-    | Break
-    | SetBreak
-    | Countdown
+    = ExerciseIpt
+    | BreakIpt
+    | SetBreakIpt
+    | CountdownIpt
+
+
+type Checkbox
+    = CountdownCbx
+    | SpeakCbx
+    | SoundsCbx
 
 
 update : Msg -> Config -> ( Config, Cmd Msg )
@@ -502,7 +552,7 @@ update msg (Config model data) =
         NewWindowSize width height ->
             ( Config { model | device = Element.classifyDevice <| Flags.WindowSize width height } data, Cmd.none )
 
-        UpdateTimeInput Exercise timeInputMsg ->
+        UpdateTimeInput ExerciseIpt timeInputMsg ->
             let
                 ( newInput, save ) =
                     TimeInput.update timeInputMsg data.exerciseInput
@@ -515,7 +565,7 @@ update msg (Config model data) =
                         \c -> ( c, Cmd.none )
                    )
 
-        UpdateTimeInput Break timeInputMsg ->
+        UpdateTimeInput BreakIpt timeInputMsg ->
             let
                 ( newInput, save ) =
                     TimeInput.update timeInputMsg data.breakInput
@@ -528,7 +578,7 @@ update msg (Config model data) =
                         \c -> ( c, Cmd.none )
                    )
 
-        UpdateTimeInput SetBreak timeInputMsg ->
+        UpdateTimeInput SetBreakIpt timeInputMsg ->
             let
                 ( newInput, save ) =
                     TimeInput.update timeInputMsg data.setBreakInput
@@ -541,7 +591,7 @@ update msg (Config model data) =
                         \c -> ( c, Cmd.none )
                    )
 
-        UpdateTimeInput Countdown timeInputMsg ->
+        UpdateTimeInput CountdownIpt timeInputMsg ->
             let
                 ( newInput, save ) =
                     TimeInput.update timeInputMsg data.countdownInput
@@ -554,12 +604,16 @@ update msg (Config model data) =
                         \c -> ( c, Cmd.none )
                    )
 
-        ToggleCountdown bool ->
+        ToggleCheckbox CountdownCbx bool ->
             Config model { data | countdown = bool }
                 |> saveToLocalStorage
 
-        ToggleSpeak bool ->
+        ToggleCheckbox SpeakCbx bool ->
             Config model { data | speak = bool }
+                |> saveToLocalStorage
+
+        ToggleCheckbox SoundsCbx bool ->
+            Config model { data | sounds = bool }
                 |> saveToLocalStorage
 
         NewElement setPos ->

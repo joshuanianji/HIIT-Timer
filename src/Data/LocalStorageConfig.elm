@@ -18,6 +18,7 @@ type alias Data =
     , sets : Dict Int Set
     , setCounter : Int
     , speak : Bool
+    , sounds : Bool
     }
 
 
@@ -56,6 +57,7 @@ encode data =
         , ( "set", Encode.dict String.fromInt encodeSet data.sets )
         , ( "setCounter", Encode.int data.setCounter )
         , ( "speak", Encode.bool data.speak )
+        , ( "speak", Encode.bool data.sounds )
         ]
 
 
@@ -94,6 +96,7 @@ decode =
         |> Pipeline.required "set" (dictIntDecoder setDecoder)
         |> Pipeline.required "setCounter" Decode.int
         |> Pipeline.optional "speak" Decode.bool False
+        |> Pipeline.optional "sounds" Decode.bool True
 
 
 setDecoder : Decoder Set

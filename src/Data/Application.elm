@@ -23,6 +23,7 @@ import View.TimeInput as TimeInput
 type alias Data =
     { playing : Bool
     , speak : Bool
+    , sounds : Bool
     , state : AppState
     }
 
@@ -144,6 +145,7 @@ fromConfig configData =
     in
     { playing = False
     , speak = configData.speak
+    , sounds = configData.sounds
     , state = state
     }
 

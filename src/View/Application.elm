@@ -811,14 +811,10 @@ update msg (Application model data) =
                     | state = Data.InProgress workoutData
                     , playing = True
                 }
-            , Cmd.batch
-                [ Ports.playWhistle ()
-                , if data.speak then
-                    Ports.speak "Workout Started"
-
-                  else
-                    Cmd.none
-                ]
+            , playSounds data
+                { sound = Ports.playWhistle ()
+                , speak = Ports.speak "Workout Started"
+                }
             )
 
         NextSecond ->
@@ -834,34 +830,32 @@ update msg (Application model data) =
                                 -- no more exercises
                                 [] ->
                                     ( Application model { data | state = Data.Finished }
-                                    , Cmd.batch
-                                        [ Ports.playTada ()
-                                        , if data.speak then
-                                            Ports.speak "Congratulations! Workout complete."
-
-                                          else
-                                            Cmd.none
-                                        ]
+                                    , playSounds data
+                                        { sound = Ports.playTada ()
+                                        , speak = Ports.speak "Congratulations! Workout complete."
+                                        }
                                     )
 
                                 x :: xs ->
                                     ( Application model
                                         { data | state = Data.InProgress { workoutData | blocksLeft = Nonempty x xs } }
-                                    , Cmd.batch
-                                        [ Ports.playWhistle ()
-                                        , if data.speak then
-                                            Ports.speak <| TimeBlock.toSpokenString x
-
-                                          else
-                                            Cmd.none
-                                        ]
+                                    , playSounds data
+                                        { sound = Ports.playWhistle ()
+                                        , speak = Ports.speak <| TimeBlock.toSpokenString x
+                                        }
                                     )
 
                         Just newBlock ->
                             let
+                                timeleft =
+                                    TimeBlock.timeLeft newBlock
+
                                 cmd =
-                                    if TimeBlock.timeLeft newBlock <= 3 then
-                                        Ports.playTick ()
+                                    if timeleft <= 3 then
+                                        playSounds data
+                                            { sound = Ports.playTick ()
+                                            , speak = Ports.speak <| String.fromInt timeleft
+                                            }
 
                                     else
                                         Cmd.none
@@ -878,10 +872,16 @@ update msg (Application model data) =
         TogglePlay ->
             ( Application model { data | playing = not data.playing }
             , if data.playing then
-                Cmd.none
+                playSounds data
+                    { sound = Cmd.none
+                    , speak = Ports.speak "Paused"
+                    }
 
               else
-                Ports.playWhistle ()
+                playSounds data
+                    { sound = Ports.playWhistle ()
+                    , speak = Ports.speak "Resumed"
+                    }
             )
 
         KeyMsg keyMsg ->
@@ -897,6 +897,27 @@ update msg (Application model data) =
 
             else
                 ( Application model data, Cmd.none )
+
+
+playSounds : Data -> { sound : Cmd Msg, speak : Cmd Msg } -> Cmd Msg
+playSounds data { sound, speak } =
+    let
+        soundMsg =
+            if data.sounds then
+                sound
+
+            else
+                Cmd.none
+
+        speakMsg =
+            if data.speak then
+                speak
+
+            else
+                Cmd.none
+    in
+    Cmd.batch
+        [ soundMsg, speakMsg ]
 
 
 
