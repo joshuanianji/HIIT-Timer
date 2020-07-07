@@ -557,14 +557,13 @@ viewInProgress workoutData model data =
         viewLandscape =
             let
                 bigFont size color label =
-                    Element.el
+                    Element.paragraph
                         [ Element.centerX
                         , Font.size size
                         , Font.center
                         , Font.color color
                         ]
-                    <|
-                        Element.text label
+                        [ Element.text label ]
 
                 timerText secsLeft color =
                     Element.el

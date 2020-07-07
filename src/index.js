@@ -94,8 +94,12 @@ app.ports.playTick.subscribe(() => {
 
 app.ports.speak.subscribe(value => {
     let speaker = new SpeechSynthesisUtterance(value);
-    // #49 is Google US English
-    speaker.voice = synth.getVoices()[49]
+    let voices = synth.getVoices()
+    console.log(voices)
+    // Google US English is the best, but we default to Samantha. If none, it will default to Alex
+    let voice = voices.filter(function (voice) { return voice.name == 'Google US English' || voice.name == 'Samantha' })[0];
+    console.log(voice)
+    speaker.voice = voice
     synth.speak(speaker);
 })
 

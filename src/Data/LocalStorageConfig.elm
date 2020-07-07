@@ -57,7 +57,7 @@ encode data =
         , ( "set", Encode.dict String.fromInt encodeSet data.sets )
         , ( "setCounter", Encode.int data.setCounter )
         , ( "speak", Encode.bool data.speak )
-        , ( "speak", Encode.bool data.sounds )
+        , ( "sounds", Encode.bool data.sounds )
         ]
 
 
