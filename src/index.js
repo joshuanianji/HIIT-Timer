@@ -72,32 +72,32 @@ var app = Elm.Main.init({
     }
 });
 
-app.ports.storeConfig.subscribe(config => {
-    let configJson = JSON.stringify(config);
-    localStorage.setItem('config', configJson);
-    console.log("Saved state: ", configJson);
-    // the actual process is too fast so I set a timeout to make it seem more realistic LOL
-    setTimeout(() => app.ports.storeConfigSuccess.send(null), 250);
-});
+// app.ports.storeConfig.subscribe(config => {
+//     let configJson = JSON.stringify(config);
+//     localStorage.setItem('config', configJson);
+//     console.log("Saved state: ", configJson);
+//     // the actual process is too fast so I set a timeout to make it seem more realistic LOL
+//     setTimeout(() => app.ports.storeConfigSuccess.send(null), 250);
+// });
 
-app.ports.playWhistle.subscribe(() => {
-    whistle.play()
-});
+// app.ports.playWhistle.subscribe(() => {
+//     whistle.play()
+// });
 
-app.ports.playTada.subscribe(() => {
-    tada.play()
-});
+// app.ports.playTada.subscribe(() => {
+//     tada.play()
+// });
 
-app.ports.playTick.subscribe(() => {
-    tick.play()
-});
+// app.ports.playTick.subscribe(() => {
+//     tick.play()
+// });
 
-app.ports.speak.subscribe(value => {
-    let speaker = new SpeechSynthesisUtterance(value);
-    // #49 is Google US English
-    speaker.voice = synth.getVoices()[49]
-    synth.speak(speaker);
-})
+// app.ports.speak.subscribe(value => {
+//     let speaker = new SpeechSynthesisUtterance(value);
+//     // #49 is Google US English
+//     speaker.voice = synth.getVoices()[49]
+//     synth.speak(speaker);
+// })
 
 // If you want your app to work offline and load faster, you can change
 // unregister() to register() below. Note this comes with some pitfalls.
