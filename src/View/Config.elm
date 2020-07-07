@@ -171,6 +171,7 @@ durations model data =
             , msg = Nothing
             , withBorder = False
             }
+            |> Element.el [ Element.centerX ]
         , TimeInput.view
             { displayText = Just "Exercise Duration:"
             , device = model.device
