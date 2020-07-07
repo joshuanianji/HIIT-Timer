@@ -14,9 +14,11 @@ import Colours
 import Data.Config as Data
 import Data.Duration as Duration
 import Data.Flags as Flags exposing (Flags)
+import Dialog
 import Dict
 import Element exposing (Element)
 import Element.Background as Background
+import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
 import Element.Lazy as Lazy
@@ -42,6 +44,7 @@ type Config
 type alias Model =
     { device : Element.Device
     , saving : Bool
+    , speechSynthesisPopup : Bool
     }
 
 
@@ -75,6 +78,7 @@ init flags =
         model =
             { device = Element.classifyDevice flags.windowSize
             , saving = False
+            , speechSynthesisPopup = False
             }
     in
     Config model { actualData | error = mErr }
@@ -115,6 +119,7 @@ view (Config model data) =
         , Element.height Element.fill
         , Element.paddingXY paddingX 32
         , Element.spacing 48
+        , Element.inFront <| speechSynthesisPopup model
         ]
         [ Util.viewIcon
             { icon = Icon.settings
@@ -211,16 +216,23 @@ view (Config model data) =
                 -- speak
                 , let
                     speakToggle =
-                        Element.el
+                        Element.row
                             [ Element.centerY
                             , Element.centerX
                             ]
-                        <|
-                            checkbox
+                            [ checkbox
                                 { onChange = ToggleSpeak
                                 , checked = data.speak
                                 , label = "Use Speech Synthesis:"
                                 }
+                            , Util.viewIcon
+                                { icon = Icon.helpCircle
+                                , color = Colours.black
+                                , size = 20
+                                , msg = Just SpeechSynthesisToggle
+                                , withBorder = False
+                                }
+                            ]
                   in
                   if Util.isVerticalPhone model.device then
                     speakToggle
@@ -326,6 +338,75 @@ view (Config model data) =
 
 
 
+-- the popup when the user clicks the (?) on the speech synthesis toggle
+
+
+speechSynthesisPopup : Model -> Element Msg
+speechSynthesisPopup model =
+    let
+        header =
+            Element.text "Speech Synthesis - What the Heck?"
+
+        body =
+            Element.textColumn
+                [ Font.light
+                , Element.spacing 4
+                ]
+                [ Element.paragraph []
+                    [ Element.text "Often times when working out, you will "
+                    , Element.el [ Font.bold ] <| Element.text "not"
+                    , Element.text " be looking at the screen. To aid with workouts, speech synthesis will literally tell you which exercises you should currently be doing!"
+                    ]
+                , Element.paragraph
+                    []
+                    [ Element.text "This relies on relatively new technology, and not all browsers support it. It will "
+                    , Element.el [ Font.bold ] <| Element.text "NOT"
+                    , Element.text " work on Internet Explorer or Opera for Android, but if you're still using Internet Explorer a lot of things won't be working for you in this app anyway lol."
+                    ]
+                ]
+
+        config =
+            { closeMessage = Just SpeechSynthesisToggle
+            , maskAttributes = [ Background.color Colours.transparent ]
+            , containerAttributes =
+                [ Element.spacing 32
+                , Element.centerX
+                , Element.centerY
+                , Element.width (Element.px 600)
+                , Element.padding 32
+                , Background.color Colours.white
+                , Border.width 1
+                , Border.color Colours.sky
+                , Border.rounded 8
+                ]
+            , headerAttributes =
+                [ Font.bold
+                , Font.size 32
+                , Element.width Element.fill
+                ]
+            , bodyAttributes = []
+            , footerAttributes = []
+            , header = Just header
+            , body = Just body
+            , footer = Nothing
+            }
+
+        dialogConfig =
+            if model.speechSynthesisPopup then
+                Just config
+
+            else
+                Nothing
+    in
+    Element.el
+        [ Element.inFront <| Dialog.view dialogConfig
+        , Element.width Element.fill
+        , Element.height Element.fill
+        ]
+        Element.none
+
+
+
 -- my own checkmark
 
 
@@ -386,6 +467,7 @@ type Msg
     | UpdateExerciseName Int Int String
     | ToggleCountdown Bool
     | ToggleSpeak Bool
+    | SpeechSynthesisToggle -- opens and closes info popup
     | ToLocalStorage -- save to local storage
     | StoreConfigSuccess -- when local storage succeeds
 
@@ -537,6 +619,9 @@ update msg (Config model data) =
         UpdateExerciseName setPos exercisePos newName ->
             Config model (updateSetDictionary data setPos <| Set.updateExerciseName exercisePos newName)
                 |> saveToLocalStorage
+
+        SpeechSynthesisToggle ->
+            ( Config { model | speechSynthesisPopup = not model.speechSynthesisPopup } data, Cmd.none )
 
         ToLocalStorage ->
             ( Config { model | saving = True } data, Ports.storeConfig (Data.encode data) )

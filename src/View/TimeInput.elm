@@ -161,12 +161,17 @@ view options (TimeInput data) =
         case label of
             Just l ->
                 Element.el
-                    [ Element.onRight <|
-                        Element.el [ Element.centerY ] input
-                    , Element.onLeft l
-                    , Element.centerX
+                    [ Element.behindContent <|
+                        Element.el
+                            [ Element.onRight <|
+                                Element.el [ Element.centerY ] input
+                            , Element.onLeft l
+                            , Element.centerX
+                            , Element.height (Element.px 64)
+                            , Element.padding 4
+                            ]
+                            Element.none
                     , Element.height (Element.px 64)
-                    , Element.padding 4
                     ]
                     Element.none
 
