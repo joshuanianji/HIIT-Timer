@@ -167,6 +167,9 @@ view options (TimeInput data) =
                     , Element.centerX
                     , Element.height (Element.px 64)
                     , Element.padding 4
+
+                    -- HACK
+                    , Element.moveDown 0
                     ]
                     Element.none
 
