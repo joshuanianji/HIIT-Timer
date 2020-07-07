@@ -13,7 +13,6 @@ html::-webkit-scrollbar{
 }
 
 .no-cursor {
-    cursor: none;
     caret-color: transparent;
 }
 /* hide arrows in number selection */
