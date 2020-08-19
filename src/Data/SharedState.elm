@@ -34,11 +34,9 @@ update msg sharedState =
     case msg of
         GotVersion (Ok version) ->
             { sharedState | version = version }
-                |> Debug.log "got version"
 
         GotVersion (Err err) ->
             { sharedState | version = httpErrorToString err }
-                |> Debug.log "rip"
 
         NewWindowSize width height ->
             { sharedState
