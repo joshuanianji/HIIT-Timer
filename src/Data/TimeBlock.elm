@@ -1,4 +1,4 @@
-module Data.TimeBlock exposing (TimeBlock(..), decreaseSecond, timeLeft, toSpokenString)
+module Data.TimeBlock exposing (TimeBlock(..), decreaseSecond, timeLeft)
 
 ---- TYPE ----
 
@@ -29,24 +29,6 @@ timeLeft block =
 
         Exercise data ->
             data.secsLeft
-
-
-
--- dictates what the HTML SpeechSynthesisUtterance would say when the block starts
-
-
-toSpokenString : TimeBlock -> String
-toSpokenString block =
-    case block of
-        CountDown _ _ ->
-            -- technically this shouldn't happen
-            "Exercise Started"
-
-        Exercise data ->
-            data.name
-
-        _ ->
-            "Take a break"
 
 
 
