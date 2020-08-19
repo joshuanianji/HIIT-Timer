@@ -4,6 +4,7 @@ import Browser
 import Browser.Events
 import Colours
 import Data.Flags as Flags exposing (Flags, WindowSize)
+import Data.SharedState as SharedState exposing (SharedState)
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
@@ -11,6 +12,7 @@ import Element.Font as Font
 import FeatherIcons as Icon
 import GithubLogo
 import Html exposing (Html)
+import Http
 import Util
 import View.Application as Application exposing (Application)
 import View.Config as Config exposing (Config)
@@ -35,7 +37,7 @@ main =
 
 
 type alias Model =
-    { windowSize : WindowSize
+    { sharedState : SharedState
     , state : State
 
     -- internal configuration data
@@ -61,10 +63,13 @@ type State
 init : Flags -> ( Model, Cmd Msg )
 init flags =
     let
+        sharedState =
+            SharedState.init flags
+
         config =
             Config.init flags
     in
-    ( { windowSize = flags.windowSize
+    ( { sharedState = sharedState
       , state = Settings
       , config = config
       , application = Application.init (Config.getData config) flags
@@ -72,7 +77,10 @@ init flags =
       , iosShareIcon = flags.images.iosShareIconSrc
       , showSavedCheck = False
       }
-    , Cmd.none
+    , Http.get
+        { url = "https://joshuaji.com/projects/hiit-timer/version.txt"
+        , expect = Http.expectString GotVersion
+        }
     )
 
 
@@ -87,7 +95,7 @@ view model =
             if model.showIosInstall then
                 let
                     fontSize =
-                        model.windowSize.width
+                        model.sharedState.windowSize.width
                             // 24
                             |> clamp 13 30
                 in
@@ -168,7 +176,7 @@ view model =
                 [ Font.typeface "Lato" ]
             , let
                 device =
-                    Element.classifyDevice model.windowSize
+                    Element.classifyDevice model.sharedState.windowSize
               in
               if device.class == Element.Desktop || device.class == Element.BigDesktop then
                 GithubLogo.view
@@ -195,7 +203,7 @@ settings model =
         , Element.spacing 32
         , Element.paddingXY 0 16
         ]
-        [ Config.view model.config
+        [ Config.view model.sharedState model.config
             |> Element.map ConfigMsg
 
         -- save settings; go to applications as well as save to localhost
@@ -214,6 +222,15 @@ settings model =
                 [ Element.spacing 16
                 , Element.centerX
                 ]
+        , Element.paragraph
+            [ Font.size 16
+            , Font.center
+            , Font.light
+            , Font.color Colours.lightGray
+            ]
+            [ Element.text "Version "
+            , Element.text model.sharedState.version
+            ]
         ]
 
 
@@ -221,7 +238,7 @@ application : Model -> Element Msg
 application model =
     let
         applicationView =
-            Application.view model.application
+            Application.view model.sharedState model.application
                 |> Element.map ApplicationMsg
 
         phoneView =
@@ -306,7 +323,7 @@ application model =
                             ]
                 ]
     in
-    if Util.isVerticalPhone (Element.classifyDevice model.windowSize) then
+    if Util.isVerticalPhone (Element.classifyDevice model.sharedState.windowSize) then
         phoneView
 
     else
@@ -318,7 +335,8 @@ application model =
 
 
 type Msg
-    = NewWindowSize Int Int
+    = GotVersion (Result Http.Error String)
+    | NewWindowSize Int Int
     | RemoveIosInstallPopup -- ios user clicks the 'x'
     | ConfigMsg Config.Msg
     | ApplicationMsg Application.Msg
@@ -333,8 +351,13 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        GotVersion result ->
+            ( { model | sharedState = SharedState.update (SharedState.GotVersion result) model.sharedState }
+            , Cmd.none
+            )
+
         NewWindowSize width height ->
-            ( { model | windowSize = Flags.WindowSize width height }
+            ( { model | sharedState = SharedState.update (SharedState.NewWindowSize width height) model.sharedState }
             , Cmd.none
             )
 
@@ -390,8 +413,16 @@ subscriptions model =
                 Application ->
                     Application.subscriptions model.application
                         |> Sub.map ApplicationMsg
+
+        newWindowSub =
+            if Util.isVerticalPhone model.sharedState.device then
+                -- vertical phones call a new window size event when the keyboard pops up as well, messing up the view function.
+                Sub.none
+
+            else
+                Browser.Events.onResize NewWindowSize
     in
     Sub.batch
         [ specifics
-        , Browser.Events.onResize NewWindowSize
+        , newWindowSub
         ]

@@ -14,6 +14,7 @@ import Colours
 import Data.Config as Data
 import Data.Duration as Duration
 import Data.Flags as Flags exposing (Flags)
+import Data.SharedState as SharedState exposing (SharedState)
 import Dialog
 import Dict
 import Element exposing (Element)
@@ -42,8 +43,7 @@ type Config
 
 
 type alias Model =
-    { device : Element.Device
-    , saving : Bool
+    { saving : Bool
     , speechSynthesisPopup : Bool
     }
 
@@ -76,8 +76,7 @@ init flags =
             { data | error = mErr }
 
         model =
-            { device = Element.classifyDevice flags.windowSize
-            , saving = False
+            { saving = False
             , speechSynthesisPopup = False
             }
     in
@@ -102,11 +101,11 @@ getData (Config _ data) =
 ---- VIEW ----
 
 
-view : Config -> Element Msg
-view (Config model data) =
+view : SharedState -> Config -> Element Msg
+view sharedState (Config model data) =
     let
         paddingX =
-            case model.device.class of
+            case sharedState.device.class of
                 Element.Phone ->
                     4
 
@@ -132,34 +131,32 @@ view (Config model data) =
         , data.error
             |> Maybe.map Element.text
             |> Maybe.withDefault Element.none
-        , durations model data
-        , viewSounds model data
-        , viewSets model data
+        , durations sharedState.device data
+        , viewSounds data
+        , viewSets sharedState.device data
 
         -- If the settings is saved or not
         , Element.el
             [ Element.centerX ]
           <|
             if model.saving then
-                Element.el
+                Element.paragraph
                     [ Font.light
                     , Font.color Colours.sunflower
                     ]
-                <|
-                    Element.text "saving..."
+                    [ Element.text "saving..." ]
 
             else
-                Element.el
+                Element.paragraph
                     [ Font.light
                     , Font.color Colours.grass
                     ]
-                <|
-                    Element.text "All Changes Saved to Local Storage "
+                    [ Element.text "All Changes Saved to Local Storage " ]
         ]
 
 
-durations : Model -> Data.Data -> Element Msg
-durations model data =
+durations : Element.Device -> Data.Data -> Element Msg
+durations device data =
     Element.column
         [ Element.centerX
         , Element.spacing 12
@@ -174,19 +171,19 @@ durations model data =
             |> Element.el [ Element.centerX ]
         , TimeInput.view
             { displayText = Just "Exercise Duration:"
-            , device = model.device
+            , device = device
             }
             data.exerciseInput
             |> Element.map (UpdateTimeInput ExerciseIpt)
         , TimeInput.view
             { displayText = Just "Break Between Exercises:"
-            , device = model.device
+            , device = device
             }
             data.breakInput
             |> Element.map (UpdateTimeInput BreakIpt)
         , TimeInput.view
             { displayText = Just "Break Between Sets:"
-            , device = model.device
+            , device = device
             }
             data.setBreakInput
             |> Element.map (UpdateTimeInput SetBreakIpt)
@@ -210,7 +207,7 @@ durations model data =
                     data.countdownInput
                         |> TimeInput.view
                             { displayText = Nothing
-                            , device = model.device
+                            , device = device
                             }
                         |> Element.map (UpdateTimeInput CountdownIpt)
 
@@ -221,7 +218,7 @@ durations model data =
                         ]
                         Element.none
           in
-          if Util.isVerticalPhone model.device then
+          if Util.isVerticalPhone device then
             -- orient vertically
             Element.column
                 [ Element.spacing 8
@@ -248,8 +245,8 @@ durations model data =
         ]
 
 
-viewSounds : Model -> Data.Data -> Element Msg
-viewSounds _ data =
+viewSounds : Data.Data -> Element Msg
+viewSounds data =
     let
         helpIcon =
             Util.viewIcon
@@ -319,8 +316,8 @@ viewSounds _ data =
         ]
 
 
-viewSets : Model -> Data.Data -> Element Msg
-viewSets model data =
+viewSets : Element.Device -> Data.Data -> Element Msg
+viewSets device data =
     Element.column
         [ Element.width Element.fill
         , Element.spacing 18
@@ -364,7 +361,7 @@ viewSets model data =
                         , updateExerciseName = UpdateExerciseName
                         , exerciseDuration = TimeInput.getDuration data.exerciseInput
                         , breakDuration = TimeInput.getDuration data.breakInput
-                        , device = model.device
+                        , device = device
                         }
                         set
                 )
@@ -512,8 +509,7 @@ checkbox data =
 
 
 type Msg
-    = NewWindowSize Int Int
-    | UpdateTimeInput Input TimeInput.Msg
+    = UpdateTimeInput Input TimeInput.Msg
     | ToggleCheckbox Checkbox Bool
     | NewElement Int
     | DeleteElement Int Int
@@ -550,9 +546,6 @@ type Checkbox
 update : Msg -> Config -> ( Config, Cmd Msg )
 update msg (Config model data) =
     case msg of
-        NewWindowSize width height ->
-            ( Config { model | device = Element.classifyDevice <| Flags.WindowSize width height } data, Cmd.none )
-
         UpdateTimeInput ExerciseIpt timeInputMsg ->
             let
                 ( newInput, save ) =
@@ -724,16 +717,4 @@ saveToLocalStorage config =
 
 subscriptions : Config -> Sub Msg
 subscriptions (Config model _) =
-    let
-        newWindowSub =
-            if Util.isVerticalPhone model.device then
-                -- vertical phones call a new window size event when the keyboard pops up as well, messing up the view function.
-                Sub.none
-
-            else
-                Browser.Events.onResize NewWindowSize
-    in
-    Sub.batch
-        [ newWindowSub
-        , Ports.storeConfigSuccess <| always StoreConfigSuccess
-        ]
+    Ports.storeConfigSuccess <| always StoreConfigSuccess

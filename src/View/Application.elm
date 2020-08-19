@@ -10,12 +10,12 @@ module View.Application exposing
     , view
     )
 
-import Browser.Events
 import Colours
 import Data.Application as Data exposing (Data)
 import Data.Config
 import Data.Duration as Duration
-import Data.Flags as Flags exposing (Flags)
+import Data.Flags exposing (Flags)
+import Data.SharedState exposing (SharedState)
 import Data.TimeBlock as TimeBlock
 import Element exposing (Element)
 import Element.Background as Background
@@ -45,8 +45,6 @@ type Application
 type alias Model =
     { keys : List Key -- keys pressed down
     , smhSrc : String
-    , screenDimensions : Flags.WindowSize
-    , device : Element.Device
     }
 
 
@@ -60,8 +58,6 @@ init data flags =
         |> Application
             { keys = []
             , smhSrc = flags.images.smhSrc
-            , screenDimensions = flags.windowSize
-            , device = Element.classifyDevice flags.windowSize
             }
 
 
@@ -108,14 +104,14 @@ endWorkout (Application model data) =
 ---- VIEW ----
 
 
-view : Application -> Element Msg
-view (Application model data) =
+view : SharedState -> Application -> Element Msg
+view sharedState (Application model data) =
     case data.state of
         Data.Starting workoutData ->
-            viewStarting workoutData model
+            viewStarting workoutData sharedState
 
         Data.InProgress workoutData ->
-            viewInProgress workoutData model data
+            viewInProgress workoutData sharedState data
 
         Data.Finished ->
             viewFinished
@@ -125,8 +121,8 @@ view (Application model data) =
             viewNeverStarted model
 
 
-viewStarting : Data.WorkoutData -> Model -> Element Msg
-viewStarting workoutData model =
+viewStarting : Data.WorkoutData -> SharedState -> Element Msg
+viewStarting workoutData sharedState =
     let
         title n showInfo =
             Element.column
@@ -208,7 +204,7 @@ viewStarting workoutData model =
                     |> Util.surround 1 4 1
     in
     -- I have to use Util.centerOverlay to ensure that both the upper and lower blocks are the SAME height
-    if Util.isVerticalPhone model.device then
+    if Util.isVerticalPhone sharedState.device then
         Element.column
             [ Element.width Element.fill
             , Element.height Element.fill
@@ -234,7 +230,7 @@ viewStarting workoutData model =
     else
         let
             data =
-                case model.device.orientation of
+                case sharedState.device.orientation of
                     -- the icons are in a column, but the Ready and the Note are in the left and ride sides respectively
                     Element.Landscape ->
                         { parentElem = Element.row
@@ -250,8 +246,8 @@ viewStarting workoutData model =
 
                     Element.Portrait ->
                         { parentElem = Element.column
-                        , titleSize = model.screenDimensions.height // 18
-                        , subTitleElem = subTitle (model.screenDimensions.height // 36) False
+                        , titleSize = sharedState.windowSize.height // 18
+                        , subTitleElem = subTitle (sharedState.windowSize.height // 36) False
                         , subTitleSurround = identity
                         , startExerciseButtonParent =
                             Element.el
@@ -282,8 +278,8 @@ viewStarting workoutData model =
             ]
 
 
-viewInProgress : Data.WorkoutData -> Model -> Data -> Element Msg
-viewInProgress workoutData model data =
+viewInProgress : Data.WorkoutData -> SharedState -> Data -> Element Msg
+viewInProgress workoutData sharedState data =
     let
         playPauseIcon =
             if data.playing then
@@ -454,7 +450,7 @@ viewInProgress workoutData model data =
 
                 viewRemainingTime =
                     Element.el
-                        [ Font.size <| model.screenDimensions.height // 8
+                        [ Font.size <| sharedState.windowSize.height // 8
                         , Font.color dataGroup.themeColour
                         , Font.bold
                         ]
@@ -696,9 +692,9 @@ viewInProgress workoutData model data =
                     ]
                 ]
     in
-    case model.device.orientation of
+    case sharedState.device.orientation of
         Element.Portrait ->
-            viewPortrait <| Util.isVerticalPhone model.device
+            viewPortrait <| Util.isVerticalPhone sharedState.device
 
         Element.Landscape ->
             viewLandscape
@@ -780,8 +776,7 @@ viewNeverStarted model =
 
 
 type Msg
-    = NewWindowSize Int Int
-    | StartExercise Data.WorkoutData
+    = StartExercise Data.WorkoutData
     | NextSecond
     | TogglePlay
     | KeyMsg Keyboard.Msg -- so we can react upon the space key press
@@ -790,20 +785,6 @@ type Msg
 update : Msg -> Application -> ( Application, Cmd Msg )
 update msg (Application model data) =
     case msg of
-        NewWindowSize width height ->
-            let
-                newWindowSize =
-                    Flags.WindowSize width height
-            in
-            ( Application
-                { model
-                    | screenDimensions = newWindowSize
-                    , device = Element.classifyDevice newWindowSize
-                }
-                data
-            , Cmd.none
-            )
-
         StartExercise workoutData ->
             ( Application model
                 { data
@@ -965,6 +946,5 @@ subscriptions (Application _ data) =
     in
     Sub.batch
         [ Sub.map KeyMsg Keyboard.subscriptions
-        , Browser.Events.onResize NewWindowSize
         , tickSub
         ]
