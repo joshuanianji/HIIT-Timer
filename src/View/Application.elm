@@ -857,7 +857,7 @@ update msg (Application model data) =
                                                 (TimeBlock.Exercise ex) :: _ ->
                                                     "Next exercise: " ++ ex.name
 
-                                                -- screw it don't say anything for any other occurence
+                                                -- screw it don't say anything for any other occurence. Should any other occurance even happen??
                                                 _ ->
                                                     ""
                                     in
