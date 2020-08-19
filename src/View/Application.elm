@@ -824,9 +824,10 @@ update msg (Application model data) =
                             ( List.Nonempty.head workoutData.blocksLeft, List.Nonempty.tail workoutData.blocksLeft )
                     in
                     case TimeBlock.decreaseSecond block of
+                        -- exercise block is complete
                         Nothing ->
                             case tl of
-                                -- no more exercises
+                                -- no more exercises. Workout complete!
                                 [] ->
                                     ( Application model { data | state = Data.Finished }
                                     , playSounds data
@@ -835,12 +836,36 @@ update msg (Application model data) =
                                         }
                                     )
 
-                                x :: xs ->
+                                bl :: xs ->
+                                    let
+                                        toSpokenString =
+                                            case bl of
+                                                TimeBlock.CountDown _ _ ->
+                                                    -- technically this shouldn't happen
+                                                    "Exercise Started"
+
+                                                TimeBlock.Exercise ex ->
+                                                    ex.name
+
+                                                _ ->
+                                                    -- also says next exercise
+                                                    "Take a break. " ++ blockAfterString
+
+                                        -- the block AFTER the current current block. Used when it's a break so we can tell the next exercise
+                                        blockAfterString =
+                                            case xs of
+                                                (TimeBlock.Exercise ex) :: _ ->
+                                                    "Next exercise: " ++ ex.name
+
+                                                -- screw it don't say anything for any other occurence
+                                                _ ->
+                                                    ""
+                                    in
                                     ( Application model
-                                        { data | state = Data.InProgress { workoutData | blocksLeft = Nonempty x xs } }
+                                        { data | state = Data.InProgress { workoutData | blocksLeft = Nonempty bl xs } }
                                     , playSounds data
                                         { sound = Ports.playWhistle ()
-                                        , speak = Ports.speak <| TimeBlock.toSpokenString x
+                                        , speak = Ports.speak toSpokenString
                                         }
                                     )
 
