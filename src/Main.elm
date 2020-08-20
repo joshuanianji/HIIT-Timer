@@ -1,35 +1,26 @@
 module Main exposing (main)
 
-import Browser
+import Browser exposing (Document, UrlRequest(..))
 import Browser.Events
+import Browser.Navigation as Nav
 import Colours
-import Data.Flags as Flags exposing (Flags, WindowSize)
+import Data.Flags exposing (Flags)
 import Data.SharedState as SharedState exposing (SharedState)
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
+import Element.Events as Events
 import Element.Font as Font
 import FeatherIcons as Icon
-import GithubLogo
+import FontAwesome.Solid
+import FontAwesome.Styles
 import Html exposing (Html)
 import Http
+import Icon
+import Url exposing (Url)
 import Util
 import View.Application as Application exposing (Application)
 import View.Config as Config exposing (Config)
-
-
-
----- PROGRAM ----
-
-
-main : Program Flags Model Msg
-main =
-    Browser.element
-        { init = init
-        , view = view
-        , update = update
-        , subscriptions = subscriptions
-        }
 
 
 
@@ -38,7 +29,7 @@ main =
 
 type alias Model =
     { sharedState : SharedState
-    , state : State
+    , workoutTab : WorkoutTab
 
     -- internal configuration data
     , config : Config
@@ -55,22 +46,22 @@ type alias Model =
     }
 
 
-type State
-    = Settings
-    | Application
+type WorkoutTab
+    = Preset
+    | Custom
 
 
-init : Flags -> ( Model, Cmd Msg )
-init flags =
+init : Flags -> Url -> Nav.Key -> ( Model, Cmd Msg )
+init flags url navKey =
     let
         sharedState =
-            SharedState.init flags
+            SharedState.init flags navKey
 
         config =
             Config.init flags
     in
     ( { sharedState = sharedState
-      , state = Settings
+      , workoutTab = Preset
       , config = config
       , application = Application.init (Config.getData config) flags
       , showIosInstall = flags.showIosInstall
@@ -88,7 +79,7 @@ init flags =
 ---- VIEW ----
 
 
-view : Model -> Html Msg
+view : Model -> Document Msg
 view model =
     let
         iosInstallPopup =
@@ -157,177 +148,72 @@ view model =
 
             else
                 Element.none
-    in
-    Element.column
-        [ Element.width Element.fill
-        , Element.height Element.fill
-        , Element.paddingXY 0 16
-        , Element.inFront <| Element.el [ Element.centerX, Element.padding 8 ] iosInstallPopup
-        ]
-        [ case model.state of
-            Settings ->
-                settings model
 
-            Application ->
-                application model
-        ]
-        |> Element.layout
-            [ Font.family
-                [ Font.typeface "Lato" ]
-            , let
-                device =
-                    Element.classifyDevice model.sharedState.windowSize
-              in
-              if device.class == Element.Desktop || device.class == Element.BigDesktop then
-                GithubLogo.view
-                    { href = "https://github.com/joshuanianji/HIIT-Timer"
-                    , bgColor = "#000"
-                    , bodyColor = "#fff"
-                    }
-                    |> Element.el
-                        [ Element.alignRight
-                        , Element.alignTop
-                        ]
-                    |> Element.inFront
-
-              else
-                Element.above Element.none
-            ]
-
-
-settings : Model -> Element Msg
-settings model =
-    Element.column
-        [ Element.width Element.fill
-        , Element.height Element.fill
-        , Element.spacing 32
-        , Element.paddingXY 0 16
-        ]
-        [ Config.view model.sharedState model.config
-            |> Element.map ConfigMsg
-
-        -- save settings; go to applications as well as save to localhost
-        , Util.viewIcon
-            { icon = Icon.check
-            , color = Colours.grass
-            , size = 50
-            , msg = Just ToApplication
-            , withBorder = True
-            }
-            |> Util.withTooltip
-                { position = Util.Top
-                , content = "Finish editing"
-                }
-            |> Element.el
-                [ Element.spacing 16
-                , Element.centerX
-                ]
-        , Element.paragraph
-            [ Font.size 16
-            , Font.center
-            , Font.light
-            , Font.color Colours.lightGray
-            ]
-            [ Element.text "Version "
-            , Element.text model.sharedState.version
-            ]
-        ]
-
-
-application : Model -> Element Msg
-application model =
-    let
-        applicationView =
-            Application.view model.sharedState model.application
-                |> Element.map ApplicationMsg
-
-        phoneView =
-            Element.column
+        body =
+            [ Element.column
                 [ Element.width Element.fill
                 , Element.height Element.fill
+                , Element.paddingXY 0 16
+                , Element.spacing 32
+                , Element.inFront <| Element.el [ Element.centerX, Element.padding 8 ] iosInstallPopup
                 ]
-                [ -- "nav bar"
-                  Element.row
-                    [ Element.width Element.fill
-                    , Element.padding 8
-                    , Element.inFront <|
-                        Element.el
-                            [ Element.alignRight
-                            , Element.padding 16
-                            ]
-                        <|
-                            Util.viewIcon
-                                { icon = Icon.x
-                                , color = Colours.sunset
-                                , size = 30
-                                , msg = Just ToSettings
-                                , withBorder = False
-                                }
+                [ Icon.view
+                    [ Element.centerX
+                    , Font.size 50
                     ]
-                    [ Element.el [ Element.centerX ] <|
-                        Util.viewIcon
-                            { icon = Icon.zap
-                            , color = Colours.sunset
-                            , size = 45
-                            , msg = Nothing
-                            , withBorder = False
-                            }
-                    ]
-                , applicationView
-                ]
-
-        desktopView =
-            Element.column
-                [ Element.width Element.fill
-                , Element.height Element.fill
-                , Element.padding 16
-                ]
-                [ -- zap icon at the top
-                  Util.viewIcon
-                    { icon = Icon.zap
+                    { icon = FontAwesome.Solid.dumbbell
                     , color = Colours.sunset
-                    , size = 50
-                    , msg = Nothing
-                    , withBorder = False
+                    , size = Icon.Lg
                     }
-                    |> Element.el [ Element.centerX ]
-                , applicationView
-                , if Application.exercising model.application then
-                    Util.viewIcon
-                        { icon = Icon.x
-                        , color = Colours.sunset
-                        , size = 40
-                        , msg = Just ToSettings
-                        , withBorder = True
-                        }
-                        |> Util.withTooltip
-                            { position = Util.Top
-                            , content = "Exit the workout"
-                            }
-                        |> Element.el
-                            [ Element.centerX
-                            , Element.alignBottom
-                            ]
+                , Element.paragraph
+                    [ Font.center
+                    , Font.color Colours.sunflower
+                    , Font.size 50
+                    , Font.light
+                    ]
+                    [ Element.text "HIIT Timer" ]
+                , let
+                    viewTab ( workoutTab, label ) =
+                        let
+                            borderColor =
+                                if workoutTab == model.workoutTab then
+                                    Colours.black
 
-                  else
-                    Util.viewIcon
-                        { icon = Icon.settings
-                        , color = Colours.sky
-                        , size = 40
-                        , msg = Just ToSettings
-                        , withBorder = True
-                        }
-                        |> Element.el
-                            [ Element.centerX
-                            , Element.alignBottom
+                                else
+                                    Colours.transparent
+                        in
+                        Element.column
+                            [ Element.padding 16
+                            , Element.spacing 8
+                            , Element.pointer
+                            , Events.onClick <| ToTab workoutTab
                             ]
+                            [ Element.text label
+                            , Element.el
+                                [ Element.height <| Element.px 5
+                                , Background.color borderColor
+                                , Element.width Element.fill
+                                ]
+                                Element.none
+                            ]
+                  in
+                  Element.row
+                    [ Element.centerX
+                    , Element.spacing 16
+                    ]
+                  <|
+                    List.map viewTab [ ( Preset, "Preset Tabs" ), ( Custom, "Custom Tabs" ) ]
                 ]
+                |> Element.layout
+                    [ Font.family
+                        [ Font.typeface "Lato" ]
+                    ]
+            , FontAwesome.Styles.css
+            ]
     in
-    if Util.isVerticalPhone (Element.classifyDevice model.sharedState.windowSize) then
-        phoneView
-
-    else
-        desktopView
+    { title = "HIIT Timer"
+    , body = body
+    }
 
 
 
@@ -335,22 +221,48 @@ application model =
 
 
 type Msg
-    = GotVersion (Result Http.Error String)
+    = ClickedLink UrlRequest
+    | UrlChanged Url
+    | GotVersion (Result Http.Error String)
     | NewWindowSize Int Int
     | RemoveIosInstallPopup -- ios user clicks the 'x'
-    | ConfigMsg Config.Msg
-    | ApplicationMsg Application.Msg
-    | ToApplication
-    | ToSettings -- navigate to settings
-
-
-
--- really should use lenses
+    | ToTab WorkoutTab
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        ClickedLink urlRequest ->
+            case urlRequest of
+                Browser.Internal url ->
+                    ( model
+                    , Cmd.none
+                      -- Nav.pushUrl model.sharedState.navKey (Url.toString url)
+                    )
+
+                Browser.External href ->
+                    ( model
+                    , Nav.load href
+                    )
+
+        UrlChanged url ->
+            let
+                bruh =
+                    "bruh"
+
+                -- newRoute =
+                --     Routes.fromUrl url
+                -- ( newPage, pageCmd ) =
+                --     fromRoute model.sharedState.flags newRoute
+            in
+            ( model
+              -- { model
+              --     | page = newPage
+              --     , route = newRoute
+              --   }
+            , Cmd.none
+            )
+
         GotVersion result ->
             ( { model | sharedState = SharedState.update (SharedState.GotVersion result) model.sharedState }
             , Cmd.none
@@ -366,33 +278,8 @@ update msg model =
             , Cmd.none
             )
 
-        ConfigMsg configMsg ->
-            let
-                ( newConfig, configCmd ) =
-                    Config.update configMsg model.config
-            in
-            ( { model | config = newConfig }, Cmd.map ConfigMsg configCmd )
-
-        ApplicationMsg applicationMsg ->
-            let
-                ( newApp, appCmd ) =
-                    Application.update applicationMsg model.application
-            in
-            ( { model | application = newApp }, Cmd.map ApplicationMsg appCmd )
-
-        ToApplication ->
-            ( { model
-                | state = Application
-                , application = Application.updateData (Config.getData model.config) model.application
-              }
-            , Cmd.none
-            )
-
-        ToSettings ->
-            ( { model
-                | state = Settings
-                , application = Application.endWorkout model.application
-              }
+        ToTab newTab ->
+            ( { model | workoutTab = newTab }
             , Cmd.none
             )
 
@@ -403,26 +290,25 @@ update msg model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    let
-        specifics =
-            case model.state of
-                Settings ->
-                    Config.subscriptions model.config
-                        |> Sub.map ConfigMsg
+    if Util.isVerticalPhone model.sharedState.device then
+        -- vertical phones call a new window size event when the keyboard pops up as well, messing up the view function.
+        Sub.none
 
-                Application ->
-                    Application.subscriptions model.application
-                        |> Sub.map ApplicationMsg
+    else
+        Browser.Events.onResize NewWindowSize
 
-        newWindowSub =
-            if Util.isVerticalPhone model.sharedState.device then
-                -- vertical phones call a new window size event when the keyboard pops up as well, messing up the view function.
-                Sub.none
 
-            else
-                Browser.Events.onResize NewWindowSize
-    in
-    Sub.batch
-        [ specifics
-        , newWindowSub
-        ]
+
+---- PROGRAM ----
+
+
+main : Program Flags Model Msg
+main =
+    Browser.application
+        { init = init
+        , view = view
+        , update = update
+        , subscriptions = subscriptions
+        , onUrlRequest = ClickedLink
+        , onUrlChange = UrlChanged
+        }

@@ -72,6 +72,7 @@ var app = Elm.Main.init({
     }
 });
 
+/*
 app.ports.storeConfig.subscribe(config => {
     let configJson = JSON.stringify(config);
     localStorage.setItem('config', configJson);
@@ -102,6 +103,7 @@ app.ports.speak.subscribe(value => {
     speaker.voice = voice
     synth.speak(speaker);
 })
+*/
 
 // If you want your app to work offline and load faster, you can change
 // unregister() to register() below. Note this comes with some pitfalls.

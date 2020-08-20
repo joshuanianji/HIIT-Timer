@@ -1,5 +1,6 @@
 module Data.SharedState exposing (Msg(..), SharedState, init, update)
 
+import Browser.Navigation as Nav
 import Data.Flags exposing (Flags, WindowSize)
 import Element
 import Http
@@ -9,6 +10,7 @@ type alias SharedState =
     { version : String
     , windowSize : WindowSize
     , device : Element.Device
+    , navKey : Nav.Key
     }
 
 
@@ -16,11 +18,12 @@ type alias SharedState =
 -- when we init we don't have the version number yet - this comes with the HTTP request
 
 
-init : Flags -> SharedState
-init flags =
+init : Flags -> Nav.Key -> SharedState
+init flags navKey =
     { version = "Loading..."
     , windowSize = flags.windowSize
     , device = Element.classifyDevice flags.windowSize
+    , navKey = navKey
     }
 
 
