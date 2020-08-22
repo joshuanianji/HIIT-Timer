@@ -10,13 +10,15 @@ module View.Application exposing
     , view
     )
 
+-- | Editing a workout
+
 import Colours
 import Data.Application as Data exposing (Data)
-import Data.Config
 import Data.Duration as Duration
 import Data.Flags exposing (Flags)
 import Data.SharedState exposing (SharedState)
 import Data.TimeBlock as TimeBlock
+import Data.Workout as Workout exposing (Workout)
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
@@ -48,27 +50,22 @@ type alias Model =
     }
 
 
-
--- should only be called once
-
-
-init : Data.Config.Data -> Flags -> Application
+init : Data -> Flags -> Application
 init data flags =
-    Data.fromConfig data
-        |> Application
-            { keys = []
-            , smhSrc = flags.images.smhSrc
-            }
+    Application
+        { keys = []
+        , smhSrc = flags.images.smhSrc
+        }
+        data
 
 
 
 -- every time the user switches to the application page from config, we only update config data.
 
 
-updateData : Data.Config.Data -> Application -> Application
+updateData : Data -> Application -> Application
 updateData data (Application model _) =
-    Data.fromConfig data
-        |> Application model
+    Application model data
 
 
 

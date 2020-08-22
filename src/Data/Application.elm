@@ -2,11 +2,11 @@ module Data.Application exposing
     ( AppState(..)
     , Data
     , WorkoutData
-    , WorkoutInfo
-    , fromConfig
+    ,  WorkoutInfo
+       -- , fromConfig
+
     )
 
-import Data.Config as Config
 import Data.Duration as Duration exposing (Duration)
 import Data.TimeBlock as TimeBlock exposing (TimeBlock)
 import Dict
@@ -57,100 +57,97 @@ type alias WorkoutInfo =
 
 
 -- when we initialize the application we need to convert our config data into application data
+{- }
+   fromConfig : Config.Data -> Data
+   fromConfig configData =
+       let
+           breakSecs =
+               Duration.toSeconds <| TimeInput.getDuration configData.breakInput
 
+           setBreakSecs =
+               Duration.toSeconds <| TimeInput.getDuration configData.setBreakInput
 
-fromConfig : Config.Data -> Data
-fromConfig configData =
-    let
-        breakSecs =
-            Duration.toSeconds <| TimeInput.getDuration configData.breakInput
+           countdownSecs =
+               Duration.toSeconds <| TimeInput.getDuration configData.countdownInput
 
-        setBreakSecs =
-            Duration.toSeconds <| TimeInput.getDuration configData.setBreakInput
+           -- flatten the sets into a nonempty list of exercises
+           exercises =
+               configData.sets
+                   |> Dict.toList
+                   |> List.map Tuple.second
+                   |> List.map
+                       (\set ->
+                           Set.getEssentials (TimeInput.getDuration configData.exerciseInput) set
+                               |> (\setData ->
+                                       case setData.exercises of
+                                           [] ->
+                                               []
 
-        countdownSecs =
-            Duration.toSeconds <| TimeInput.getDuration configData.countdownInput
+                                           x :: xs ->
+                                               Nonempty x xs
+                                                   |> List.Nonempty.map
+                                                       (\( exerciseName, exerciseDuration ) ->
+                                                           TimeBlock.Exercise
+                                                               { setName = setData.name
+                                                               , name = exerciseName
+                                                               , duration = Duration.toSeconds exerciseDuration
+                                                               , secsLeft = Duration.toSeconds exerciseDuration
+                                                               }
+                                                       )
+                                                   |> intersperseNonempty (TimeBlock.ExerciseBreak breakSecs breakSecs)
+                                                   |> List.repeat setData.repeats
+                                  )
+                       )
+                   -- at this point we have a List (List (Nonempty TimeBlock))
+                   |> List.concat
+                   |> List.intersperse (List.Nonempty.fromElement <| TimeBlock.SetBreak setBreakSecs setBreakSecs)
+                   |> List.Nonempty.fromList
+                   |> Maybe.map List.Nonempty.concat
+                   |> Maybe.map
+                       -- add countdown
+                       (\blocks ->
+                           if configData.countdown then
+                               List.Nonempty.cons (TimeBlock.CountDown countdownSecs countdownSecs) blocks
 
-        -- flatten the sets into a nonempty list of exercises
-        exercises =
-            configData.sets
-                |> Dict.toList
-                |> List.map Tuple.second
-                |> List.map
-                    (\set ->
-                        Set.getEssentials (TimeInput.getDuration configData.exerciseInput) set
-                            |> (\setData ->
-                                    case setData.exercises of
-                                        [] ->
-                                            []
+                           else
+                               blocks
+                       )
 
-                                        x :: xs ->
-                                            Nonempty x xs
-                                                |> List.Nonempty.map
-                                                    (\( exerciseName, exerciseDuration ) ->
-                                                        TimeBlock.Exercise
-                                                            { setName = setData.name
-                                                            , name = exerciseName
-                                                            , duration = Duration.toSeconds exerciseDuration
-                                                            , secsLeft = Duration.toSeconds exerciseDuration
-                                                            }
-                                                    )
-                                                |> intersperseNonempty (TimeBlock.ExerciseBreak breakSecs breakSecs)
-                                                |> List.repeat setData.repeats
-                               )
-                    )
-                -- at this point we have a List (List (Nonempty TimeBlock))
-                |> List.concat
-                |> List.intersperse (List.Nonempty.fromElement <| TimeBlock.SetBreak setBreakSecs setBreakSecs)
-                |> List.Nonempty.fromList
-                |> Maybe.map List.Nonempty.concat
-                |> Maybe.map
-                    -- add countdown
-                    (\blocks ->
-                        if configData.countdown then
-                            List.Nonempty.cons (TimeBlock.CountDown countdownSecs countdownSecs) blocks
+           -- the static information about the workout
+           setDictFold currSet acc =
+               let
+                   set =
+                       Set.getData currSet
+               in
+               acc + set.repeat * Dict.size set.exercises
 
-                        else
-                            blocks
-                    )
+           workoutInfo =
+               { totalExercises = Dict.foldl (always setDictFold) 0 configData.sets
+               , totalSets = Dict.size configData.sets
+               , totalTimeblocks =
+                   Maybe.map List.Nonempty.length exercises
+                       |> Maybe.withDefault 0
+               , totalTime = Config.totalTime configData
+               }
 
-        -- the static information about the workout
-        setDictFold currSet acc =
-            let
-                set =
-                    Set.getData currSet
-            in
-            acc + set.repeat * Dict.size set.exercises
+           state =
+               case exercises of
+                   Just blocks ->
+                       Starting
+                           { blocksLeft = blocks
+                           , info = workoutInfo
+                           }
 
-        workoutInfo =
-            { totalExercises = Dict.foldl (always setDictFold) 0 configData.sets
-            , totalSets = Dict.size configData.sets
-            , totalTimeblocks =
-                Maybe.map List.Nonempty.length exercises
-                    |> Maybe.withDefault 0
-            , totalTime = Config.totalTime configData
-            }
-
-        state =
-            case exercises of
-                Just blocks ->
-                    Starting
-                        { blocksLeft = blocks
-                        , info = workoutInfo
-                        }
-
-                -- no elements - never started the workout smh
-                Nothing ->
-                    NeverStarted
-    in
-    { playing = False
-    , speak = configData.speak
-    , sounds = configData.sounds
-    , state = state
-    }
-
-
-
+                   -- no elements - never started the workout smh
+                   Nothing ->
+                       NeverStarted
+       in
+       { playing = False
+       , speak = configData.speak
+       , sounds = configData.sounds
+       , state = state
+       }
+-}
 -- internal helpers
 
 

@@ -1,4 +1,4 @@
-module View.Config exposing
+module View.Edit exposing
     ( Config
     , Msg
     , encode
@@ -9,12 +9,13 @@ module View.Config exposing
     , view
     )
 
-import Browser.Events
+-- | Editing a workout
+
 import Colours
-import Data.Config as Data
 import Data.Duration as Duration
 import Data.Flags as Flags exposing (Flags)
 import Data.SharedState as SharedState exposing (SharedState)
+import Data.Workout as Workout exposing (Workout)
 import Dialog
 import Dict
 import Element exposing (Element)
@@ -39,7 +40,7 @@ import View.TimeInput as TimeInput
 
 
 type Config
-    = Config Model Data.Data
+    = Config Model Workout
 
 
 type alias Model =
@@ -52,35 +53,9 @@ type alias Model =
 -- INIT AND JSON STUFF
 
 
-init : Flags -> Config
-init flags =
-    let
-        decodeLocalStorageAttempt =
-            Data.decodeLocalStorage flags.storedConfig
-
-        ( data, mErr ) =
-            case decodeLocalStorageAttempt of
-                -- there was no config stored in the first place
-                Ok Nothing ->
-                    ( Data.default, Nothing )
-
-                -- success
-                Ok (Just config) ->
-                    ( Data.fromLocalStorage config, Nothing )
-
-                -- failure to decode
-                Err jsonErr ->
-                    ( Data.default, Just <| Json.Decode.errorToString jsonErr )
-
-        actualData =
-            { data | error = mErr }
-
-        model =
-            { saving = False
-            , speechSynthesisPopup = False
-            }
-    in
-    Config model { actualData | error = mErr }
+init : Workout -> Flags -> Config
+init workout flags =
+    Config model workout
 
 
 

@@ -1,9 +1,9 @@
 module Modules.Exercise exposing
     ( Exercise
     , breakView
+    , decoder
+    , encode
     , essentials
-    , fromData
-    , getData
     , init
     , updateName
     , updatePosition
@@ -19,6 +19,9 @@ import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
 import FeatherIcons as Icon
+import Json.Decode as Decode exposing (Decoder)
+import Json.Decode.Pipeline as Pipeline
+import Json.Encode as Encode
 import Util
 
 
@@ -52,6 +55,26 @@ type alias Options msg =
 
 
 
+-- JSON
+
+
+decoder : Decoder Exercise
+decoder =
+    Decode.succeed Data
+        |> Pipeline.required "position" Decode.int
+        |> Pipeline.required "name" Decode.string
+        |> Decode.map Exercise
+
+
+encode : Exercise -> Encode.Value
+encode (Exercise data) =
+    Encode.object
+        [ ( "position", Encode.int data.position )
+        , ( "name", Encode.string data.name )
+        ]
+
+
+
 -- takes an int to initialize with a number (Exercise1, Exercise2)
 
 
@@ -70,20 +93,6 @@ init n =
 essentials : Duration -> Exercise -> ( String, Duration )
 essentials duration (Exercise data) =
     ( data.name, duration )
-
-
-
--- for localstorage dudes
-
-
-getData : Exercise -> Data
-getData (Exercise data) =
-    data
-
-
-fromData : Data -> Exercise
-fromData =
-    Exercise
 
 
 

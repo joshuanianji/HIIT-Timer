@@ -1,9 +1,9 @@
 module Modules.Set exposing
     ( Set
     , SetEssentials
+    , decoder
     , deleteExercise
-    , fromData
-    , getData
+    , encode
     , getEssentials
     , init
     , newExercise
@@ -32,6 +32,9 @@ import Element.Input as Input
 import Element.Lazy as Lazy
 import FeatherIcons as Icon
 import Html.Attributes
+import Json.Decode as Decode exposing (Decoder)
+import Json.Decode.Pipeline as Pipeline
+import Json.Encode as Encode
 import Modules.Exercise as Exercise exposing (Exercise)
 import Util
 
@@ -67,6 +70,35 @@ type alias Data =
     -- toggle
     , expanded : Bool
     }
+
+
+
+-- JSON
+
+
+decoder : Decoder Set
+decoder =
+    Decode.succeed Data
+        |> Pipeline.required "exercises" (Util.dictIntDecoder Exercise.decoder)
+        |> Pipeline.required "exerciseCounter" Decode.int
+        |> Pipeline.required "repeat" Decode.string
+        |> Pipeline.required "repeat" Decode.int
+        |> Pipeline.required "position" Decode.int
+        |> Pipeline.required "name" Decode.string
+        |> Pipeline.required "expanded" Decode.bool
+        |> Decode.map Set
+
+
+encode : Set -> Encode.Value
+encode (Set data) =
+    Encode.object
+        [ ( "name", Encode.string data.name )
+        , ( "position", Encode.int data.position )
+        , ( "expanded", Encode.bool data.expanded )
+        , ( "repeat", Encode.int data.repeat )
+        , ( "exerciseCounter", Encode.int data.exerciseCounter )
+        , ( "exercises", Encode.dict String.fromInt Exercise.encode data.exercises )
+        ]
 
 
 
@@ -217,20 +249,6 @@ sanitizeExercises (Set data) =
 updatePosition : Int -> Set -> Set
 updatePosition n (Set data) =
     Set { data | position = n }
-
-
-
--- for localstorage stuff and other things
-
-
-getData : Set -> Data
-getData (Set data) =
-    data
-
-
-fromData : Data -> Set
-fromData =
-    Set
 
 
 

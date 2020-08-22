@@ -6,49 +6,43 @@ import Browser.Navigation as Nav
 import Colours
 import Data.Flags exposing (Flags)
 import Data.SharedState as SharedState exposing (SharedState)
+import Data.Workout as Workout exposing (Workout)
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events as Events
 import Element.Font as Font
 import FeatherIcons as Icon
+import Page.Home as Home 
+import Page.NotFound as NotFound
 import FontAwesome.Solid
 import FontAwesome.Styles
 import Html exposing (Html)
 import Http
 import Icon
+import Page.Home as Home
 import Url exposing (Url)
 import Util
-import View.Application as Application exposing (Application)
-import View.Config as Config exposing (Config)
-
-
+import Data.Routes as Routes exposing (Route)
+import Dict
 
 ---- MODEL ----
 
 
 type alias Model =
     { sharedState : SharedState
-    , workoutTab : WorkoutTab
-
-    -- internal configuration data
-    , config : Config
-
-    -- internal application data
-    , application : Application
+    , route : Route 
+    , page : Page 
 
     -- popup letting them know that you can install it as a native app
     , showIosInstall : Bool
     , iosShareIcon : String
-
-    -- when the local storage is saved, show the checkmark for 2 seconds
-    , showSavedCheck : Bool
     }
 
-
-type WorkoutTab
-    = Preset
-    | Custom
+-- like Route but also holds the page models
+type Page
+    = HomePage Home.Model
+    | NotFoundPage NotFound.Model
 
 
 init : Flags -> Url -> Nav.Key -> ( Model, Cmd Msg )
@@ -56,24 +50,52 @@ init flags url navKey =
     let
         sharedState =
             SharedState.init flags navKey
+        
+        route = 
+            Routes.fromUrl url 
 
-        config =
-            Config.init flags
+        (page, pageCmd) =
+            fromRoute route 
     in
     ( { sharedState = sharedState
-      , workoutTab = Preset
-      , config = config
-      , application = Application.init (Config.getData config) flags
+    , route = route 
+    , page = page
       , showIosInstall = flags.showIosInstall
       , iosShareIcon = flags.images.iosShareIconSrc
-      , showSavedCheck = False
       }
-    , Http.get
+    , Cmd.batch 
+        [Http.get
         { url = "https://joshuaji.com/projects/hiit-timer/version.txt"
         , expect = Http.expectString GotVersion
         }
+        , pageCmd]
     )
 
+
+
+fromRoute : Route -> ( Page, Cmd Msg )
+fromRoute route =
+    case route of
+        Routes.Home workoutTab ->
+            Home.init workoutTab
+                |> initWith HomePage HomeMsg
+
+        Routes.NotFound ->
+            NotFound.init
+                |> initWith NotFoundPage NotFoundMsg
+
+
+
+-- initializes a subpage
+
+
+initWith :
+    (subPage -> Page)
+    -> (subMsg -> Msg)
+    -> ( subPage, Cmd subMsg )
+    -> ( Page, Cmd Msg )
+initWith toPage toMsg ( route, subCmd ) =
+    ( toPage route, Cmd.map toMsg subCmd )
 
 
 ---- VIEW ----
@@ -148,6 +170,15 @@ view model =
 
             else
                 Element.none
+        
+        content = 
+            case model.page of 
+                HomePage subModel ->
+                    Home.view model.sharedState subModel
+                        |> Element.map HomeMsg
+                NotFoundPage subModel ->
+                    NotFound.view model.sharedState subModel
+                        |> Element.map NotFoundMsg
 
         body =
             [ Element.column
@@ -155,58 +186,13 @@ view model =
                 , Element.height Element.fill
                 , Element.paddingXY 0 16
                 , Element.spacing 32
-                , Element.inFront <| Element.el [ Element.centerX, Element.padding 8 ] iosInstallPopup
                 ]
-                [ Icon.view
-                    [ Element.centerX
-                    , Font.size 50
-                    ]
-                    { icon = FontAwesome.Solid.dumbbell
-                    , color = Colours.sunset
-                    , size = Icon.Lg
-                    }
-                , Element.paragraph
-                    [ Font.center
-                    , Font.color Colours.sunflower
-                    , Font.size 50
-                    , Font.light
-                    ]
-                    [ Element.text "HIIT Timer" ]
-                , let
-                    viewTab ( workoutTab, label ) =
-                        let
-                            borderColor =
-                                if workoutTab == model.workoutTab then
-                                    Colours.black
-
-                                else
-                                    Colours.transparent
-                        in
-                        Element.column
-                            [ Element.padding 16
-                            , Element.spacing 8
-                            , Element.pointer
-                            , Events.onClick <| ToTab workoutTab
-                            ]
-                            [ Element.text label
-                            , Element.el
-                                [ Element.height <| Element.px 5
-                                , Background.color borderColor
-                                , Element.width Element.fill
-                                ]
-                                Element.none
-                            ]
-                  in
-                  Element.row
-                    [ Element.centerX
-                    , Element.spacing 16
-                    ]
-                  <|
-                    List.map viewTab [ ( Preset, "Preset Tabs" ), ( Custom, "Custom Tabs" ) ]
+                [ content
                 ]
                 |> Element.layout
                     [ Font.family
                         [ Font.typeface "Lato" ]
+                    , Element.inFront <| Element.el [ Element.centerX, Element.padding 8 ] iosInstallPopup
                     ]
             , FontAwesome.Styles.css
             ]
@@ -214,6 +200,8 @@ view model =
     { title = "HIIT Timer"
     , body = body
     }
+
+
 
 
 
@@ -226,18 +214,18 @@ type Msg
     | GotVersion (Result Http.Error String)
     | NewWindowSize Int Int
     | RemoveIosInstallPopup -- ios user clicks the 'x'
-    | ToTab WorkoutTab
+    | HomeMsg Home.Msg 
+    | NotFoundMsg NotFound.Msg 
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case msg of
-        ClickedLink urlRequest ->
+    case (model.page, msg) of
+        (_, ClickedLink urlRequest )->
             case urlRequest of
                 Browser.Internal url ->
                     ( model
-                    , Cmd.none
-                      -- Nav.pushUrl model.sharedState.navKey (Url.toString url)
+                    ,  Nav.pushUrl model.sharedState.navKey (Url.toString url)
                     )
 
                 Browser.External href ->
@@ -245,43 +233,63 @@ update msg model =
                     , Nav.load href
                     )
 
-        UrlChanged url ->
+        (_, UrlChanged url )->
             let
-                bruh =
-                    "bruh"
 
-                -- newRoute =
-                --     Routes.fromUrl url
-                -- ( newPage, pageCmd ) =
-                --     fromRoute model.sharedState.flags newRoute
+                newRoute =
+                    Routes.fromUrl url
+
+                ( newPage, pageCmd ) =
+                    fromRoute newRoute
             in
-            ( model
-              -- { model
-              --     | page = newPage
-              --     , route = newRoute
-              --   }
+            ( { model
+                  | page = newPage
+                  , route = newRoute
+                }
             , Cmd.none
             )
 
-        GotVersion result ->
+        (_, GotVersion result )->
             ( { model | sharedState = SharedState.update (SharedState.GotVersion result) model.sharedState }
             , Cmd.none
             )
 
-        NewWindowSize width height ->
+        (_, NewWindowSize width height )->
             ( { model | sharedState = SharedState.update (SharedState.NewWindowSize width height) model.sharedState }
             , Cmd.none
             )
 
-        RemoveIosInstallPopup ->
+        (_, RemoveIosInstallPopup )->
             ( { model | showIosInstall = False }
             , Cmd.none
             )
+        
+        (HomePage subModel, HomeMsg subMsg) ->
+            Home.update model.sharedState subMsg subModel 
+                |> updateWith HomePage HomeMsg model
 
-        ToTab newTab ->
-            ( { model | workoutTab = newTab }
-            , Cmd.none
-            )
+
+        (NotFoundPage subModel, NotFoundMsg subMsg) ->
+            NotFound.update model.sharedState subMsg subModel 
+                |> updateWith NotFoundPage NotFoundMsg model
+
+        _ ->
+            (model, Cmd.none)
+
+
+-- updates a subpage
+
+
+updateWith :
+    (subModel -> Page)
+    -> (subMsg -> Msg)
+    -> Model
+    -> ( subModel, Cmd subMsg )
+    -> ( Model, Cmd Msg )
+updateWith toPage toMsg model ( subModel, subMsg ) =
+    ( { model | page = toPage subModel }
+    , Cmd.map toMsg subMsg
+    )
 
 
 

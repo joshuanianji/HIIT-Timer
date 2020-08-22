@@ -1,6 +1,7 @@
 module Util exposing
     ( Position(..)
     , centerOverlay
+    , dictIntDecoder
     , isVerticalPhone
     , surround
     , viewIcon
@@ -10,6 +11,7 @@ module Util exposing
 -- misc functions
 
 import Colours
+import Dict exposing (Dict)
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
@@ -17,6 +19,7 @@ import Element.Events as Events
 import Element.Font as Font
 import FeatherIcons as Icon
 import Html.Attributes
+import Json.Decode as Decode exposing (Decoder)
 
 
 surround : Int -> Int -> Int -> Element msg -> Element msg
@@ -137,3 +140,28 @@ positionToClass p =
                     "right"
     in
     "simptip-position-" ++ str
+
+
+
+-- helps me convert the dictionaries with integers as keys
+
+
+dictIntDecoder : Decoder a -> Decoder (Dict Int a)
+dictIntDecoder d =
+    let
+        helper acc list =
+            case list of
+                [] ->
+                    Decode.succeed acc
+
+                ( sk, v ) :: xs ->
+                    case String.toInt sk of
+                        Nothing ->
+                            Decode.fail ("failed to convert to int: " ++ sk)
+
+                        Just i ->
+                            helper (acc ++ [ ( i, v ) ]) xs
+    in
+    Decode.keyValuePairs d
+        |> Decode.andThen (helper [])
+        |> Decode.map Dict.fromList
