@@ -16,6 +16,8 @@ import Http
 import Util
 import View.Application as Application exposing (Application)
 import View.Config as Config exposing (Config)
+import File.Download 
+import Json.Encode
 
 
 
@@ -206,22 +208,35 @@ settings model =
         [ Config.view model.sharedState model.config
             |> Element.map ConfigMsg
 
-        -- save settings; go to applications as well as save to localhost
-        , Util.viewIcon
-            { icon = Icon.check
-            , color = Colours.grass
-            , size = 50
-            , msg = Just ToApplication
-            , withBorder = True
-            }
-            |> Util.withTooltip
-                { position = Util.Top
-                , content = "Finish editing"
+        , Element.row 
+            [ Element.spacing 16 
+            , Element.centerX
+            ]
+            [ -- save settings; go to applications as well as save to localhostUtil.viewIcon
+              Util.viewIcon
+                { icon = Icon.check
+                , color = Colours.grass
+                , size = 50
+                , msg = Just ToApplication
+                , withBorder = True
                 }
-            |> Element.el
-                [ Element.spacing 16
-                , Element.centerX
-                ]
+                |> Util.withTooltip
+                    { position = Util.Top
+                    , content = "Finish editing"
+                    }
+            -- download file as JSON
+            , Util.viewIcon
+                { icon = Icon.share
+                , color = Colours.sky
+                , size = 50
+                , msg = Just ExportConfig
+                , withBorder = True
+                }
+                |> Util.withTooltip
+                    { position = Util.Top
+                    , content = "Export Data"
+                    }
+            ]
         , Element.paragraph
             [ Font.size 16
             , Font.center
@@ -342,6 +357,7 @@ type Msg
     | ApplicationMsg Application.Msg
     | ToApplication
     | ToSettings -- navigate to settings
+    | ExportConfig 
 
 
 
@@ -394,6 +410,13 @@ update msg model =
                 , application = Application.endWorkout model.application
               }
             , Cmd.none
+            )
+        
+        ExportConfig ->
+            ( model
+            , Config.encode model.config
+                |> Json.Encode.encode 4 -- prettify the JSON file
+                |> File.Download.string "workout.json" "application/json" 
             )
 
 
