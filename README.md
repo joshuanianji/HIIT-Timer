@@ -10,7 +10,7 @@ I also toyed around with the file structure, separating them into `Data`, `Modul
 
 You can see it in action [here](https://joshuaji.com/projects/hiit-timer/)
 
-## Run It Yourself
+## Run It Urself
 
 Make sure you have Elm and create-elm-app installed. Once you `git clone` the repo, run `elm-app start` to open the development server with the cool debug feature.
 
