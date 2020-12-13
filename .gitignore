@@ -7,5 +7,6 @@ elmapp.config.js
 
 # other stuff 
 .DS_Store
+node_modules/
 elm-analyse.json
 hiit-timer-release-workflow.code-workspace
