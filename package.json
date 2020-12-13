@@ -11,7 +11,8 @@
     "url": "git+https://github.com/joshuanianji/HIIT-Timer.git"
   },
   "scripts": {
-      "start": "elm-app start"
+      "start": "elm-app start",
+      "build": "elm-app build"
   },
   "author": "Joshua Ji",
   "license": "ISC",
