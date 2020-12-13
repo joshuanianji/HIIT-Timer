@@ -52,9 +52,10 @@ const tick = new Howl({
 
 var storedConfig = localStorage.getItem('config');
 console.log("Retrieved state: ", storedConfig);
-const VERSION = process.env.npm_package_version ? npm_package_version : null;
-console.log('version:', VERSION);
 
+// somehow using `process.env.npm_package_version doesn't work
+const VERSION = process.env.ELM_APP_PRODUCT_VERSION || null;
+console.log('version:', VERSION);
 
 
 var app = Elm.Main.init({
