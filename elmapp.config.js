@@ -1,3 +1,3 @@
 module.exports = {
-    homepage: "https://joshuaji.com/hiit-timer/"
+    homepage: "https://joshuaji.com/projects/hiit-timer/"
 }
