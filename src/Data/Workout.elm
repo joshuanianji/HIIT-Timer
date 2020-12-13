@@ -136,12 +136,11 @@ fromConfig configData =
         state =
             case exercises of
                 Just blocks ->
-                    Finished
+                    Starting
+                        { blocksLeft = blocks
+                        , info = workoutInfo
+                        }
 
-                -- Starting
-                --     { blocksLeft = blocks
-                --     , info = workoutInfo
-                --     }
                 -- no elements - never started the workout smh
                 Nothing ->
                     NeverStarted
