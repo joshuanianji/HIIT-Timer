@@ -1,22 +1,19 @@
-module View.Application exposing
-    ( Application
+module Page.Workout exposing
+    ( Model
     , Msg
-    , endWorkout
-    , exercising
     , init
     , subscriptions
     , update
-    , updateData
     , view
     )
 
 import Colours
-import Data.Application as Data exposing (Data)
 import Data.Config
 import Data.Duration as Duration
-import Data.Flags exposing (Flags)
-import Data.SharedState exposing (SharedState)
+import Data.Flags exposing (Flags, Images)
+import Data.SharedState as SharedState exposing (SharedState)
 import Data.TimeBlock as TimeBlock
+import Data.Workout as Data exposing (Data)
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
@@ -26,6 +23,7 @@ import FeatherIcons as Icon
 import Keyboard exposing (Key)
 import List.Nonempty exposing (Nonempty(..))
 import Ports
+import Routes exposing (Route)
 import Time
 import Util
 
@@ -34,17 +32,16 @@ import Util
 ---- TYPE ----
 
 
-type Application
-    = Application Model Data
+type Model
+    = Model AppModel Data
 
 
 
 -- other important data
 
 
-type alias Model =
+type alias AppModel =
     { keys : List Key -- keys pressed down
-    , smhSrc : String
     }
 
 
@@ -52,31 +49,22 @@ type alias Model =
 -- should only be called once
 
 
-init : Data.Config.Data -> Flags -> Application
-init data flags =
-    Data.fromConfig data
-        |> Application
-            { keys = []
-            , smhSrc = flags.images.smhSrc
-            }
+init : Data.Config.Data -> ( Model, Cmd Msg )
+init data =
+    ( Model
+        { keys = []
+        }
+        (Data.fromConfig data)
+    , Cmd.none
+    )
 
 
 
--- every time the user switches to the application page from config, we only update config data.
+--- Helpers
 
 
-updateData : Data.Config.Data -> Application -> Application
-updateData data (Application model _) =
-    Data.fromConfig data
-        |> Application model
-
-
-
--- Main.elm uses this to know whether or not they need to show the settings page at the bottom
-
-
-exercising : Application -> Bool
-exercising (Application _ data) =
+exercising : Data -> Bool
+exercising data =
     case data.state of
         Data.InProgress _ ->
             True
@@ -86,39 +74,115 @@ exercising (Application _ data) =
 
 
 
--- Main.elm also uses this to end the workout
--- changing state so it won't keep ticking when we're on the settings page
--- I just arbitratily put the state as Finished - honestly, anything that's not Data.InProgress will work
-
-
-endWorkout : Application -> Application
-endWorkout (Application model data) =
-    Application model
-        { data
-            | playing = False
-            , state = Data.Finished
-        }
-
-
-
 ---- VIEW ----
 
 
-view : SharedState -> Application -> Element Msg
-view sharedState (Application model data) =
-    case data.state of
-        Data.Starting workoutData ->
-            viewStarting workoutData sharedState
+view : SharedState -> Model -> Element Msg
+view sharedState (Model model data) =
+    let
+        content =
+            case data.state of
+                Data.Starting workoutData ->
+                    viewStarting workoutData sharedState
 
-        Data.InProgress workoutData ->
-            viewInProgress workoutData sharedState data
+                Data.InProgress workoutData ->
+                    viewInProgress workoutData sharedState data
 
-        Data.Finished ->
-            viewFinished
+                Data.Finished ->
+                    viewFinished
 
-        Data.NeverStarted ->
-            -- the smh screen
-            viewNeverStarted model
+                Data.NeverStarted ->
+                    -- the smh screen
+                    viewNeverStarted sharedState.images model
+    in
+    let
+        phoneView =
+            Element.column
+                [ Element.width Element.fill
+                , Element.height Element.fill
+                ]
+                [ -- "nav bar"
+                  Element.row
+                    [ Element.width Element.fill
+                    , Element.padding 8
+                    , Element.inFront <|
+                        Element.el
+                            [ Element.alignRight
+                            , Element.padding 16
+                            ]
+                        <|
+                            Util.viewIcon
+                                { icon = Icon.x
+                                , color = Colours.sunset
+                                , size = 30
+                                , msg = Just <| NavigateTo Routes.Config
+                                , withBorder = False
+                                }
+                    ]
+                    [ Element.el [ Element.centerX ] <|
+                        Util.viewIcon
+                            { icon = Icon.zap
+                            , color = Colours.sunset
+                            , size = 45
+                            , msg = Nothing
+                            , withBorder = False
+                            }
+                    ]
+                , content
+                ]
+
+        desktopView =
+            Element.column
+                [ Element.width Element.fill
+                , Element.height Element.fill
+                , Element.padding 16
+                ]
+                [ -- zap icon at the top
+                  Util.viewIcon
+                    { icon = Icon.zap
+                    , color = Colours.sunset
+                    , size = 50
+                    , msg = Nothing
+                    , withBorder = False
+                    }
+                    |> Element.el [ Element.centerX ]
+                , content
+                , if exercising data then
+                    Util.viewIcon
+                        { icon = Icon.x
+                        , color = Colours.sunset
+                        , size = 40
+                        , msg = Just <| NavigateTo Routes.Config
+                        , withBorder = True
+                        }
+                        |> Util.withTooltip
+                            { position = Util.Top
+                            , content = "Exit the workout"
+                            }
+                        |> Element.el
+                            [ Element.centerX
+                            , Element.alignBottom
+                            ]
+
+                  else
+                    Util.viewIcon
+                        { icon = Icon.settings
+                        , color = Colours.sky
+                        , size = 40
+                        , msg = Just <| NavigateTo Routes.Config
+                        , withBorder = True
+                        }
+                        |> Element.el
+                            [ Element.centerX
+                            , Element.alignBottom
+                            ]
+                ]
+    in
+    if Util.isVerticalPhone sharedState.device then
+        phoneView
+
+    else
+        desktopView
 
 
 viewStarting : Data.WorkoutData -> SharedState -> Element Msg
@@ -732,8 +796,8 @@ viewFinished =
         ]
 
 
-viewNeverStarted : Model -> Element Msg
-viewNeverStarted model =
+viewNeverStarted : Images -> AppModel -> Element Msg
+viewNeverStarted img model =
     Element.column
         [ Element.width Element.fill
         , Element.centerY
@@ -744,7 +808,7 @@ viewNeverStarted model =
             [ Element.width (Element.px 125)
             , Element.centerX
             ]
-            { src = model.smhSrc
+            { src = img.smhSrc
             , description = "Sokka is disappointed in your workout"
             }
         , Element.paragraph
@@ -776,17 +840,21 @@ viewNeverStarted model =
 
 
 type Msg
-    = StartExercise Data.WorkoutData
+    = NavigateTo Route
+    | StartExercise Data.WorkoutData
     | NextSecond
     | TogglePlay
     | KeyMsg Keyboard.Msg -- so we can react upon the space key press
 
 
-update : Msg -> Application -> ( Application, Cmd Msg )
-update msg (Application model data) =
+update : SharedState -> Msg -> Model -> ( Model, Cmd Msg )
+update sharedState msg (Model model data) =
     case msg of
+        NavigateTo route ->
+            ( Model model data, SharedState.navigateTo route sharedState )
+
         StartExercise workoutData ->
-            ( Application model
+            ( Model model
                 { data
                     | state = Data.InProgress workoutData
                     , playing = True
@@ -810,7 +878,7 @@ update msg (Application model data) =
                             case tl of
                                 -- no more exercises. Workout complete!
                                 [] ->
-                                    ( Application model { data | state = Data.Finished }
+                                    ( Model model { data | state = Data.Finished }
                                     , playSounds data
                                         { sound = Ports.playTada ()
                                         , speak = Ports.speak "Congratulations! Workout complete."
@@ -842,7 +910,7 @@ update msg (Application model data) =
                                                 _ ->
                                                     ""
                                     in
-                                    ( Application model
+                                    ( Model model
                                         { data | state = Data.InProgress { workoutData | blocksLeft = Nonempty bl xs } }
                                     , playSounds data
                                         { sound = Ports.playWhistle ()
@@ -865,17 +933,17 @@ update msg (Application model data) =
                                     else
                                         Cmd.none
                             in
-                            ( Application model
+                            ( Model model
                                 { data | state = Data.InProgress { workoutData | blocksLeft = Nonempty newBlock tl } }
                             , cmd
                             )
 
                 _ ->
                     -- ignore
-                    ( Application model data, Cmd.none )
+                    ( Model model data, Cmd.none )
 
         TogglePlay ->
-            ( Application model { data | playing = not data.playing }
+            ( Model model { data | playing = not data.playing }
             , if data.playing then
                 playSounds data
                     { sound = Cmd.none
@@ -898,10 +966,10 @@ update msg (Application model data) =
                     { model | keys = newKeys }
             in
             if newKeys == [ Keyboard.Spacebar ] then
-                update TogglePlay (Application newModel data)
+                update sharedState TogglePlay (Model newModel data)
 
             else
-                ( Application model data, Cmd.none )
+                ( Model model data, Cmd.none )
 
 
 playSounds : Data -> { sound : Cmd Msg, speak : Cmd Msg } -> Cmd Msg
@@ -929,8 +997,8 @@ playSounds data { sound, speak } =
 ---- SUBSCRIPTIONS ----
 
 
-subscriptions : Application -> Sub Msg
-subscriptions (Application _ data) =
+subscriptions : Model -> Sub Msg
+subscriptions (Model _ data) =
     let
         tickSub =
             case data.state of

@@ -1,4 +1,4 @@
-module Data.Flags exposing (Flags, WindowSize)
+module Data.Flags exposing (Flags, Images, WindowSize)
 
 import Json.Encode
 
@@ -13,10 +13,6 @@ type alias Flags =
     , showIosInstall : Bool
     , images : Images
     }
-
-
-
----- HELPERS ----
 
 
 type alias Images =

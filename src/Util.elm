@@ -1,6 +1,7 @@
 module Util exposing
     ( Position(..)
     , centerOverlay
+    , httpErrorToString
     , isVerticalPhone
     , surround
     , viewIcon
@@ -17,6 +18,7 @@ import Element.Events as Events
 import Element.Font as Font
 import FeatherIcons as Icon
 import Html.Attributes
+import Http
 
 
 surround : Int -> Int -> Int -> Element msg -> Element msg
@@ -137,3 +139,22 @@ positionToClass p =
                     "right"
     in
     "simptip-position-" ++ str
+
+
+httpErrorToString : Http.Error -> String
+httpErrorToString error =
+    case error of
+        Http.BadUrl url ->
+            "BadUrl! " ++ url
+
+        Http.Timeout ->
+            "Timeout!"
+
+        Http.NetworkError ->
+            "NetworkError!"
+
+        Http.BadStatus status ->
+            "BadStatus! " ++ String.fromInt status
+
+        Http.BadBody body ->
+            "BadBody! " ++ body

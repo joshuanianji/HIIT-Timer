@@ -1,14 +1,19 @@
-module Data.SharedState exposing (Msg(..), SharedState, init, update)
+module Data.SharedState exposing (Msg(..), SharedState, init, navigateTo, update)
 
-import Data.Flags exposing (Flags, WindowSize)
+import Browser.Navigation as Nav
+import Data.Flags exposing (Flags, Images, WindowSize)
 import Element
 import Http
+import Routes exposing (Route)
+import Util
 
 
 type alias SharedState =
     { version : String
     , windowSize : WindowSize
     , device : Element.Device
+    , key : Nav.Key
+    , images : Images
     }
 
 
@@ -16,11 +21,13 @@ type alias SharedState =
 -- when we init we don't have the version number yet - this comes with the HTTP request
 
 
-init : Flags -> SharedState
-init flags =
+init : Flags -> Nav.Key -> SharedState
+init flags key =
     { version = "Loading..."
     , windowSize = flags.windowSize
     , device = Element.classifyDevice flags.windowSize
+    , key = key
+    , images = flags.images
     }
 
 
@@ -36,7 +43,7 @@ update msg sharedState =
             { sharedState | version = version }
 
         GotVersion (Err err) ->
-            { sharedState | version = httpErrorToString err }
+            { sharedState | version = Util.httpErrorToString err }
 
         NewWindowSize width height ->
             { sharedState
@@ -45,20 +52,10 @@ update msg sharedState =
             }
 
 
-httpErrorToString : Http.Error -> String
-httpErrorToString error =
-    case error of
-        Http.BadUrl url ->
-            "BadUrl! " ++ url
 
-        Http.Timeout ->
-            "Timeout!"
+---- HELPERS ----
 
-        Http.NetworkError ->
-            "NetworkError!"
 
-        Http.BadStatus status ->
-            "BadStatus! " ++ String.fromInt status
-
-        Http.BadBody body ->
-            "BadBody! " ++ body
+navigateTo : Route -> SharedState -> Cmd msg
+navigateTo route sharedState =
+    Routes.navigateTo sharedState.key route
