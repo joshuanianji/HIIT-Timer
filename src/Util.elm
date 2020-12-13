@@ -4,6 +4,7 @@ module Util exposing
     , httpErrorToString
     , isVerticalPhone
     , surround
+    , textButton
     , viewIcon
     , withTooltip
     )
@@ -16,6 +17,7 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Events as Events
 import Element.Font as Font
+import Element.Input as Input
 import FeatherIcons as Icon
 import Html.Attributes
 import Http
@@ -158,3 +160,29 @@ httpErrorToString error =
 
         Http.BadBody body ->
             "BadBody! " ++ body
+
+
+textButton :
+    { msg : msg
+    , color : Element.Color
+    , text : String
+    }
+    -> Element msg
+textButton { msg, color, text } =
+    Input.button
+        [ Element.centerX
+        , Element.paddingXY 12 8
+        , Font.light
+        , Font.size 20
+        , Font.color color
+        , Border.width 1
+        , Border.color color
+        , Border.rounded 4
+        , Element.mouseOver
+            [ Background.color color
+            , Font.color Colours.white
+            ]
+        ]
+        { onPress = Just msg
+        , label = Element.text text
+        }

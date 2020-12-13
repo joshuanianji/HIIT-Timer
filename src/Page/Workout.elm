@@ -793,6 +793,11 @@ viewFinished =
             , Font.light
             ]
             [ Element.text "Congratulations! You finished!" ]
+        , Util.textButton
+            { msg = NavigateTo Routes.Config
+            , color = Colours.sunflower
+            , text = "Back"
+            }
         ]
 
 
@@ -828,9 +833,11 @@ viewNeverStarted img model =
             [ Element.paragraph
                 [ Element.width Element.shrink ]
                 [ Element.text "You didn't put anything in your workout!" ]
-            , Element.paragraph
-                [ Element.width Element.shrink ]
-                [ Element.text "Go to the settings and try again." ]
+            , Util.textButton
+                { msg = NavigateTo Routes.Config
+                , color = Colours.sunflower
+                , text = "Go Back to Settings"
+                }
             ]
         ]
 

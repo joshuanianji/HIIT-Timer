@@ -14,8 +14,8 @@ import Data.TimeBlock as TimeBlock exposing (TimeBlock)
 import Dict
 import List.Nonempty exposing (Nonempty(..))
 import Modules.Set as Set
-import Set
 import Modules.TimeInput as TimeInput
+import Set
 
 
 
@@ -136,11 +136,12 @@ fromConfig configData =
         state =
             case exercises of
                 Just blocks ->
-                    Starting
-                        { blocksLeft = blocks
-                        , info = workoutInfo
-                        }
+                    Finished
 
+                -- Starting
+                --     { blocksLeft = blocks
+                --     , info = workoutInfo
+                --     }
                 -- no elements - never started the workout smh
                 Nothing ->
                     NeverStarted
