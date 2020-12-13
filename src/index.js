@@ -29,11 +29,8 @@ const isIos = () => {
 
 // Detects if device is in standalone mode
 const isInStandaloneMode = () => ('standalone' in window.navigator) && (window.navigator.standalone);
-let showIosInstall = false;
 // Checks if should display install popup notification:
-if (isIos() && !isInStandaloneMode()) {
-    showIosInstall = true
-}
+let showIosInstall = isIos() && !isInStandaloneMode();
 
 
 // init sounds
@@ -55,6 +52,10 @@ const tick = new Howl({
 
 var storedConfig = localStorage.getItem('config');
 console.log("Retrieved state: ", storedConfig);
+const VERSION = process.env.npm_package_version ? npm_package_version : null;
+console.log('version:', VERSION);
+
+
 
 var app = Elm.Main.init({
     node: document.getElementById('elm'),
@@ -68,7 +69,8 @@ var app = Elm.Main.init({
         images: {
             smhSrc: smh,
             iosShareIconSrc: iosShareIcon
-        }
+        },
+        version: VERSION
     }
 });
 

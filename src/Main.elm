@@ -17,12 +17,12 @@ import GithubLogo
 import Html exposing (Html)
 import Http
 import Json.Encode
-import Routes exposing (Route)
-import Url exposing (Url)
-import Util
 import Page.Config as Config
 import Page.NotFound as NotFound
 import Page.Workout as Workout
+import Routes exposing (Route)
+import Url exposing (Url)
+import Util
 
 
 
@@ -93,13 +93,7 @@ init flags url key =
       , showSavedCheck = False
       , page = page
       }
-    , Cmd.batch
-        [ cmd
-        , Http.get
-            { url = "https://joshuaji.com/projects/hiit-timer/version.txt"
-            , expect = Http.expectString GotVersion
-            }
-        ]
+    , cmd
     )
 
 
@@ -238,7 +232,6 @@ githubLogo device =
 type Msg
     = ChangedUrl Url
     | ClickedLink UrlRequest
-    | GotVersion (Result Http.Error String)
     | NewWindowSize Int Int
     | RemoveIosInstallPopup -- ios user clicks the 'x'
     | ConfigMsg Config.Msg
@@ -274,11 +267,6 @@ update msg model =
                 , route = route
               }
             , pageCmd
-            )
-
-        ( _, GotVersion result ) ->
-            ( { model | sharedState = SharedState.update (SharedState.GotVersion result) model.sharedState }
-            , Cmd.none
             )
 
         ( _, NewWindowSize width height ) ->

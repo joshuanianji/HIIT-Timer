@@ -12,6 +12,7 @@ type alias Flags =
     , storedConfig : Json.Encode.Value
     , showIosInstall : Bool
     , images : Images
+    , version : Maybe String
     }
 
 

@@ -23,7 +23,7 @@ type alias SharedState =
 
 init : Flags -> Nav.Key -> SharedState
 init flags key =
-    { version = "Loading..."
+    { version = Maybe.withDefault "build..." flags.version
     , windowSize = flags.windowSize
     , device = Element.classifyDevice flags.windowSize
     , key = key
@@ -32,19 +32,12 @@ init flags key =
 
 
 type Msg
-    = GotVersion (Result Http.Error String)
-    | NewWindowSize Int Int
+    = NewWindowSize Int Int
 
 
 update : Msg -> SharedState -> SharedState
 update msg sharedState =
     case msg of
-        GotVersion (Ok version) ->
-            { sharedState | version = version }
-
-        GotVersion (Err err) ->
-            { sharedState | version = Util.httpErrorToString err }
-
         NewWindowSize width height ->
             { sharedState
                 | windowSize = WindowSize width height
