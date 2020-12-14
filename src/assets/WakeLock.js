@@ -19,7 +19,7 @@ export default class WakeLock {
         try {
             this.wakeLock = await navigator.wakeLock.request('screen')
             this.wakeLock.addEventListener('release', () => {
-                console.log('Screen Wake Lock released:', this.released);
+                console.log('Screen Wake Lock released');
             });
             console.log('Screen Wake Lock released:', this.wakeLock.released);
         } catch (err) {
@@ -28,18 +28,9 @@ export default class WakeLock {
     }
 
     end() {
-        if (this.wakeLock) {
-            this.wakeLock.release();
-            this.wakeLock = null;
-        }
+        this.wakeLock.release()
+            .then(() => {
+                then.wakeLock = null;
+            });
     }
-}
-
-// Function that attempts to request a screen wake lock.
-export async function start() {
-
-};
-
-export function end() {
-
 }
