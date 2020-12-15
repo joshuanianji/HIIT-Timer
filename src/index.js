@@ -2,6 +2,7 @@
 import './assets/main.css';
 import './assets/howler.core';
 import './assets/simptip.min.css';
+import WakeLock from './assets/WakeLock';
 
 // images and files
 import smh from './assets/img/smh.png';
@@ -16,8 +17,8 @@ import { Elm } from './Main.elm';
 import * as serviceWorker from './serviceWorker';
 
 // for the window to s p e a k
-var synth = window.speechSynthesis;
-
+let synth = window.speechSynthesis;
+let wakeLock = new WakeLock();
 
 // iOS "Add to home screen" popup
 // Detects if device is on iOS 
@@ -83,16 +84,30 @@ app.ports.storeConfig.subscribe(config => {
     setTimeout(() => app.ports.storeConfigSuccess.send(null), 250);
 });
 
-app.ports.playWhistle.subscribe(() => {
-    whistle.play()
+
+app.ports.playSound.subscribe(sound => {
+    switch (sound) {
+        case 'whistle':
+            whistle.play();
+            break;
+        case 'tada':
+            tada.play();
+            break;
+        case 'tick':
+            tick.play();
+            break;
+    }
 });
 
-app.ports.playTada.subscribe(() => {
-    tada.play()
-});
-
-app.ports.playTick.subscribe(() => {
-    tick.play()
+app.ports.workoutStatus.subscribe(status => {
+    switch (status) {
+        case 'start':
+            wakeLock.start();
+            break;
+        case 'end':
+            wakeLock.end();
+            break;
+    }
 });
 
 app.ports.speak.subscribe(value => {
@@ -109,4 +124,4 @@ app.ports.speak.subscribe(value => {
 // If you want your app to work offline and load faster, you can change
 // unregister() to register() below. Note this comes with some pitfalls.
 // Learn more about service workers: https://bit.ly/CRA-PWA
-serviceWorker.register();
+serviceWorker.unregister();

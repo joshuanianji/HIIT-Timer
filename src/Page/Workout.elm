@@ -115,7 +115,7 @@ view sharedState (Model model data) =
                                 { icon = Icon.x
                                 , color = Colours.sunset
                                 , size = 30
-                                , msg = Just <| NavigateTo Routes.Config
+                                , msg = Just <| NavigateTo True Routes.Config
                                 , withBorder = False
                                 }
                     ]
@@ -152,7 +152,7 @@ view sharedState (Model model data) =
                         { icon = Icon.x
                         , color = Colours.sunset
                         , size = 40
-                        , msg = Just <| NavigateTo Routes.Config
+                        , msg = Just <| NavigateTo True Routes.Config
                         , withBorder = True
                         }
                         |> Util.withTooltip
@@ -169,7 +169,7 @@ view sharedState (Model model data) =
                         { icon = Icon.settings
                         , color = Colours.sky
                         , size = 40
-                        , msg = Just <| NavigateTo Routes.Config
+                        , msg = Just <| NavigateTo True Routes.Config
                         , withBorder = True
                         }
                         |> Element.el
@@ -794,7 +794,7 @@ viewFinished =
             ]
             [ Element.text "Congratulations! You finished!" ]
         , Util.textButton
-            { msg = NavigateTo Routes.Config
+            { msg = NavigateTo True Routes.Config
             , color = Colours.sunflower
             , text = "Back"
             }
@@ -834,7 +834,7 @@ viewNeverStarted img model =
                 [ Element.width Element.shrink ]
                 [ Element.text "You didn't put anything in your workout!" ]
             , Util.textButton
-                { msg = NavigateTo Routes.Config
+                { msg = NavigateTo True Routes.Config
                 , color = Colours.sunflower
                 , text = "Go Back to Settings"
                 }
@@ -847,7 +847,7 @@ viewNeverStarted img model =
 
 
 type Msg
-    = NavigateTo Route
+    = NavigateTo Bool Route
     | StartExercise Data.WorkoutData
     | NextSecond
     | TogglePlay
@@ -857,8 +857,17 @@ type Msg
 update : SharedState -> Msg -> Model -> ( Model, Cmd Msg )
 update sharedState msg (Model model data) =
     case msg of
-        NavigateTo route ->
-            ( Model model data, SharedState.navigateTo route sharedState )
+        NavigateTo alwaysOn route ->
+            ( Model model data
+            , Cmd.batch
+                [ SharedState.navigateTo route sharedState
+                , if alwaysOn then
+                    Ports.workoutStatus "end"
+
+                  else
+                    Cmd.none
+                ]
+            )
 
         StartExercise workoutData ->
             ( Model model
@@ -867,7 +876,7 @@ update sharedState msg (Model model data) =
                     , playing = True
                 }
             , playSounds data
-                { sound = Ports.playWhistle ()
+                { sound = Ports.playSound "whistle"
                 , speak = Ports.speak "Workout Started"
                 }
             )
@@ -887,7 +896,7 @@ update sharedState msg (Model model data) =
                                 [] ->
                                     ( Model model { data | state = Data.Finished }
                                     , playSounds data
-                                        { sound = Ports.playTada ()
+                                        { sound = Ports.playSound "tada"
                                         , speak = Ports.speak "Congratulations! Workout complete."
                                         }
                                     )
@@ -920,7 +929,7 @@ update sharedState msg (Model model data) =
                                     ( Model model
                                         { data | state = Data.InProgress { workoutData | blocksLeft = Nonempty bl xs } }
                                     , playSounds data
-                                        { sound = Ports.playWhistle ()
+                                        { sound = Ports.playSound "whistle"
                                         , speak = Ports.speak toSpokenString
                                         }
                                     )
@@ -933,7 +942,7 @@ update sharedState msg (Model model data) =
                                 cmd =
                                     if timeleft <= 3 then
                                         playSounds data
-                                            { sound = Ports.playTick ()
+                                            { sound = Ports.playSound "tick"
                                             , speak = Ports.speak <| String.fromInt timeleft
                                             }
 
@@ -959,7 +968,7 @@ update sharedState msg (Model model data) =
 
               else
                 playSounds data
-                    { sound = Ports.playWhistle ()
+                    { sound = Ports.playSound "whistle"
                     , speak = Ports.speak "Resumed"
                     }
             )

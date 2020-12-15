@@ -29,10 +29,10 @@ import Json.Decode
 import Json.Encode
 import Modules.Exercise as Exercise
 import Modules.Set as Set
+import Modules.TimeInput as TimeInput
 import Ports
 import Routes exposing (Route)
 import Util
-import Modules.TimeInput as TimeInput
 
 
 
@@ -99,7 +99,7 @@ view sharedState (Model model data) =
                 { icon = Icon.check
                 , color = Colours.grass
                 , size = 50
-                , msg = Just <| NavigateTo Routes.Workout
+                , msg = Just <| NavigateTo True Routes.Workout
                 , withBorder = True
                 }
                 |> Util.withTooltip
@@ -537,7 +537,7 @@ checkbox data =
 
 
 type Msg
-    = NavigateTo Route
+    = NavigateTo Bool Route -- bool is whether or not we should start the always on screen
     | UpdateTimeInput Input TimeInput.Msg
     | ToggleCheckbox Checkbox Bool
     | NewElement Int
@@ -576,8 +576,17 @@ type Checkbox
 update : SharedState -> Msg -> Model -> ( Model, Cmd Msg )
 update sharedState msg (Model model data) =
     case msg of
-        NavigateTo route ->
-            ( Model model data, SharedState.navigateTo route sharedState )
+        NavigateTo alwaysOn route ->
+            ( Model model data
+            , Cmd.batch
+                [ SharedState.navigateTo route sharedState
+                , if alwaysOn then
+                    Ports.workoutStatus "start"
+
+                  else
+                    Cmd.none
+                ]
+            )
 
         UpdateTimeInput ExerciseIpt timeInputMsg ->
             let
