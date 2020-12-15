@@ -30,7 +30,7 @@ export default class WakeLock {
     end() {
         this.wakeLock.release()
             .then(() => {
-                then.wakeLock = null;
+                this.wakeLock = null;
             });
     }
 }
