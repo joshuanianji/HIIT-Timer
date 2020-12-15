@@ -13,8 +13,8 @@ import Colours
 import Data.Config as Data exposing (Data)
 import Data.Duration as Duration
 import Data.Flags as Flags exposing (Flags)
-import Data.SharedState as SharedState exposing (SharedState)
-import Dialog
+import Data.PopupCmd as PopupCmd
+import Data.SharedState as SharedState exposing (SharedState, SharedStateUpdate)
 import Dict
 import Element exposing (Element)
 import Element.Background as Background
@@ -28,6 +28,7 @@ import Html.Attributes
 import Json.Decode
 import Json.Encode
 import Modules.Exercise as Exercise
+import Modules.Popup as Popup
 import Modules.Set as Set
 import Modules.TimeInput as TimeInput
 import Ports
@@ -48,22 +49,19 @@ type Model
 
 
 type alias AppModel =
-    { saving : Bool
-    , speechSynthesisPopup : Bool
-    }
+    { saving : Bool }
 
 
 
 -- INIT AND JSON STUFF
 
 
-init : Data -> ( Model, Cmd Msg )
-init data =
+init : SharedState -> ( Model, Cmd Msg )
+init ({ configCache } as sharedState) =
     ( Model
         { saving = False
-        , speechSynthesisPopup = False
         }
-        data
+        configCache
     , Cmd.none
     )
 
@@ -149,7 +147,6 @@ content sharedState (Model model data) =
         , Element.height Element.fill
         , Element.paddingXY paddingX 32
         , Element.spacing 52
-        , Element.inFront <| speechSynthesisPopup model
         ]
         [ Util.viewIcon
             { icon = Icon.settings
@@ -281,7 +278,7 @@ viewSounds data =
                 { icon = Icon.helpCircle
                 , color = Colours.black
                 , size = 20
-                , msg = Just SpeechSynthesisToggle
+                , msg = Just OpenSpeechSynthesis
                 , withBorder = False
                 }
                 |> Element.el
@@ -424,7 +421,7 @@ viewSets device data =
 -- the popup when the user clicks the (?) on the speech synthesis toggle
 
 
-speechSynthesisPopup : AppModel -> Element Msg
+speechSynthesisPopup : AppModel -> Popup.Config Msg
 speechSynthesisPopup model =
     let
         body =
@@ -453,42 +450,32 @@ speechSynthesisPopup model =
                 { icon = Icon.x
                 , color = Colours.sunset
                 , size = 30
-                , msg = Just SpeechSynthesisToggle
+                , msg = Just ClosePopup
                 , withBorder = True
                 }
                 |> Element.el
                     [ Element.centerX ]
-
-        config =
-            { closeMessage = Nothing
-            , maskAttributes = [ Background.color Colours.transparent ]
-            , containerAttributes =
-                [ Element.spacing 32
-                , Element.centerX
-                , Element.centerY
-                , Element.width (Element.maximum 600 Element.fill)
-                , Element.padding 32
-                , Background.color Colours.white
-                , Border.width 1
-                , Border.color Colours.sky
-                , Border.rounded 8
-                ]
-            , headerAttributes = []
-            , bodyAttributes = [ Element.width Element.fill ]
-            , footerAttributes = [ Element.width Element.fill ]
-            , header = Nothing
-            , body = Just body
-            , footer = Just closeButton
-            }
-
-        dialogConfig =
-            if model.speechSynthesisPopup then
-                Just config
-
-            else
-                Nothing
     in
-    Dialog.view dialogConfig
+    { closeMessage = Nothing
+    , maskAttributes = [ Background.color Colours.transparent ]
+    , containerAttributes =
+        [ Element.spacing 32
+        , Element.centerX
+        , Element.centerY
+        , Element.width (Element.maximum 600 Element.fill)
+        , Element.padding 32
+        , Background.color Colours.white
+        , Border.width 1
+        , Border.color Colours.sky
+        , Border.rounded 8
+        ]
+    , headerAttributes = []
+    , bodyAttributes = [ Element.width Element.fill ]
+    , footerAttributes = [ Element.width Element.fill ]
+    , header = Nothing
+    , body = Just body
+    , footer = Just closeButton
+    }
 
 
 
@@ -538,6 +525,7 @@ checkbox data =
 
 type Msg
     = NavigateTo Bool Route -- bool is whether or not we should start the always on screen
+    | ClosePopup
     | UpdateTimeInput Input TimeInput.Msg
     | ToggleCheckbox Checkbox Bool
     | NewElement Int
@@ -550,7 +538,7 @@ type Msg
     | ToggleSetExpand Int
     | UpdateSetName Int String
     | UpdateExerciseName Int Int String
-    | SpeechSynthesisToggle -- opens and closes info popup
+    | OpenSpeechSynthesis
     | ToLocalStorage -- save to local storage
     | StoreConfigSuccess -- when local storage succeeds
     | ExportConfig
@@ -573,7 +561,7 @@ type Checkbox
     | SoundsCbx
 
 
-update : SharedState -> Msg -> Model -> ( Model, Cmd Msg )
+update : SharedState -> Msg -> Model -> ( Model, Cmd Msg, SharedStateUpdate Msg )
 update sharedState msg (Model model data) =
     case msg of
         NavigateTo alwaysOn route ->
@@ -586,7 +574,11 @@ update sharedState msg (Model model data) =
                   else
                     Cmd.none
                 ]
+            , SharedState.NoUpdate
             )
+
+        ClosePopup ->
+            ( Model model data, Cmd.none, SharedState.PopupCmd PopupCmd.remove )
 
         UpdateTimeInput ExerciseIpt timeInputMsg ->
             let
@@ -598,7 +590,7 @@ update sharedState msg (Model model data) =
                         saveToLocalStorage sharedState
 
                     else
-                        \c -> ( c, Cmd.none )
+                        \c -> ( c, Cmd.none, SharedState.NoUpdate )
                    )
 
         UpdateTimeInput BreakIpt timeInputMsg ->
@@ -611,7 +603,7 @@ update sharedState msg (Model model data) =
                         saveToLocalStorage sharedState
 
                     else
-                        \c -> ( c, Cmd.none )
+                        \c -> ( c, Cmd.none, SharedState.NoUpdate )
                    )
 
         UpdateTimeInput SetBreakIpt timeInputMsg ->
@@ -624,7 +616,7 @@ update sharedState msg (Model model data) =
                         saveToLocalStorage sharedState
 
                     else
-                        \c -> ( c, Cmd.none )
+                        \c -> ( c, Cmd.none, SharedState.NoUpdate )
                    )
 
         UpdateTimeInput CountdownIpt timeInputMsg ->
@@ -637,7 +629,7 @@ update sharedState msg (Model model data) =
                         saveToLocalStorage sharedState
 
                     else
-                        \c -> ( c, Cmd.none )
+                        \c -> ( c, Cmd.none, SharedState.NoUpdate )
                    )
 
         ToggleCheckbox CountdownCbx bool ->
@@ -663,6 +655,7 @@ update sharedState msg (Model model data) =
         NewSetRepeat setPos repeat ->
             ( Model model (updateSetDictionary data setPos <| Set.updateRepeatInput repeat)
             , Cmd.none
+            , SharedState.NoUpdate
             )
 
         SanitizeRepeat setPos ->
@@ -688,7 +681,7 @@ update sharedState msg (Model model data) =
         CopySet setPos ->
             case Dict.get setPos data.sets of
                 Nothing ->
-                    ( Model model data, Cmd.none )
+                    ( Model model data, Cmd.none, SharedState.NoUpdate )
 
                 Just setToCopy ->
                     let
@@ -713,7 +706,7 @@ update sharedState msg (Model model data) =
                         |> saveToLocalStorage sharedState
 
         ToggleSetExpand setPos ->
-            ( Model model (updateSetDictionary data setPos Set.toggleExpand), Cmd.none )
+            ( Model model (updateSetDictionary data setPos Set.toggleExpand), Cmd.none, SharedState.NoUpdate )
 
         UpdateSetName setPos newName ->
             Model model (updateSetDictionary data setPos <| Set.updateName newName)
@@ -723,14 +716,15 @@ update sharedState msg (Model model data) =
             Model model (updateSetDictionary data setPos <| Set.updateExerciseName exercisePos newName)
                 |> saveToLocalStorage sharedState
 
-        SpeechSynthesisToggle ->
-            ( Model { model | speechSynthesisPopup = not model.speechSynthesisPopup } data, Cmd.none )
+        OpenSpeechSynthesis ->
+            ( Model model data, Cmd.none, SharedState.PopupCmd <| PopupCmd.show (speechSynthesisPopup model) )
 
         ToLocalStorage ->
-            ( Model { model | saving = True } data, Ports.storeConfig (Data.encode data) )
+            ( Model { model | saving = True } data, Ports.storeConfig (Data.encode data), SharedState.NoUpdate )
 
         StoreConfigSuccess ->
-            ( Model { model | saving = False } data, Cmd.none )
+            -- update config whenever we successfully store config
+            ( Model { model | saving = False } data, Cmd.none, SharedState.UpdateConfigCache data )
 
         ExportConfig ->
             ( Model model data
@@ -738,6 +732,7 @@ update sharedState msg (Model model data) =
                 -- prettify the JSON file
                 |> Json.Encode.encode 4
                 |> File.Download.string "workout.json" "application/json"
+            , SharedState.NoUpdate
             )
 
 
@@ -756,7 +751,7 @@ updateSetDictionary data setPos f =
     }
 
 
-saveToLocalStorage : SharedState -> Model -> ( Model, Cmd Msg )
+saveToLocalStorage : SharedState -> Model -> ( Model, Cmd Msg, SharedStateUpdate Msg )
 saveToLocalStorage sharedState model =
     update sharedState ToLocalStorage model
 

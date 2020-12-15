@@ -12,7 +12,7 @@ module Page.NotFound exposing
 
 import Browser.Navigation as Nav
 import Colours
-import Data.SharedState as SharedState exposing (SharedState)
+import Data.SharedState as SharedState exposing (SharedState, SharedStateUpdate)
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Font as Font
@@ -52,12 +52,12 @@ view sharedState model =
             , Font.size 32
             ]
             [ Element.text "Page not found!" ]
-        , Input.button 
+        , Input.button
             [ Element.centerX
             , Font.light
             , Font.size 20
             , Font.bold
-            , Element.mouseOver 
+            , Element.mouseOver
                 [ Font.color Colours.lightGray ]
             ]
             { onPress = Just (NavigateTo Routes.Config)
@@ -74,11 +74,11 @@ type Msg
     = NavigateTo Route
 
 
-update : SharedState -> Msg -> Model -> ( Model, Cmd Msg )
+update : SharedState -> Msg -> Model -> ( Model, Cmd Msg, SharedStateUpdate Msg )
 update sharedState msg model =
     case msg of
         NavigateTo route ->
-            ( model, SharedState.navigateTo route sharedState )
+            ( model, SharedState.navigateTo route sharedState, SharedState.NoUpdate )
 
 
 

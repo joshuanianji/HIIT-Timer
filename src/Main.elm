@@ -6,8 +6,9 @@ import Browser.Navigation as Nav
 import Colours
 import Data.Config
 import Data.Flags as Flags exposing (Flags, WindowSize)
-import Data.SharedState as SharedState exposing (SharedState)
-import Element exposing (Element)
+import Data.PopupCmd as PopupCmd
+import Data.SharedState as SharedState exposing (SharedState, SharedStateUpdate)
+import Element exposing (Element, scrollbarY)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
@@ -17,6 +18,7 @@ import GithubLogo
 import Html exposing (Html)
 import Http
 import Json.Encode
+import Modules.Popup as Popup
 import Page.Config as Config
 import Page.NotFound as NotFound
 import Page.Workout as Workout
@@ -49,13 +51,10 @@ type alias Model =
     { sharedState : SharedState
     , route : Route
 
-    -- internal configuration data. Basically the cached, parsed local storage.
-    -- I need to think if this is necessary or not.
-    , configCache : Data.Config.Data
-
     -- popup letting them know that you can install it as a native app
     , showIosInstall : Bool
     , iosShareIcon : String
+    , popup : Maybe (Popup.Config Msg)
 
     -- when the local storage is saved, show the checkmark for 2 seconds
     , showSavedCheck : Bool
@@ -75,21 +74,17 @@ init flags url key =
         sharedState =
             SharedState.init flags key
 
-        -- TODO: use error
-        ( configCache, mErr ) =
-            Data.Config.init flags.storedConfig
-
         route =
             Routes.fromUrl url
 
         ( page, cmd ) =
-            routeToPage route configCache sharedState
+            routeToPage route sharedState
     in
     ( { sharedState = sharedState
       , route = Routes.fromUrl url
-      , configCache = configCache
       , showIosInstall = flags.showIosInstall
       , iosShareIcon = flags.images.iosShareIconSrc
+      , popup = Nothing
       , showSavedCheck = False
       , page = page
       }
@@ -111,7 +106,7 @@ viewApplication model =
 view : Model -> Html Msg
 view model =
     let
-        content =
+        pageContent =
             case model.page of
                 Config subModel ->
                     Config.view model.sharedState subModel
@@ -124,14 +119,30 @@ view model =
                 NotFound subModel ->
                     NotFound.view model.sharedState subModel
                         |> Element.map NotFoundMsg
+
+        content =
+            Element.el
+                [ Element.width Element.fill
+                , Element.height <| Element.maximum model.sharedState.windowSize.height Element.fill
+                , Element.scrollbarY
+                ]
+            <|
+                Element.el
+                    [ Element.width Element.fill
+                    , Element.height Element.fill
+                    , Element.paddingXY 0 16
+                    , Element.inFront <| Element.el [ Element.centerX, Element.padding 8 ] (iosInstallPopup model)
+                    ]
+                    pageContent
     in
     Element.el
         [ Element.width Element.fill
         , Element.height Element.fill
-        , Element.paddingXY 0 16
-        , Element.inFront <| Element.el [ Element.centerX, Element.padding 8 ] (iosInstallPopup model)
+        , Element.behindContent content
+        , Element.inFront <|
+            Popup.view model.popup
         ]
-        content
+        Element.none
         |> Element.layout
             [ Font.family
                 [ Font.typeface "Lato" ]
@@ -260,7 +271,7 @@ update msg model =
                     Routes.fromUrl url
 
                 ( page, pageCmd ) =
-                    routeToPage route model.configCache model.sharedState
+                    routeToPage route model.sharedState
             in
             ( { model
                 | page = page
@@ -279,13 +290,9 @@ update msg model =
             , Cmd.none
             )
 
-        ( Config subModel, ConfigMsg configMsg ) ->
-            -- also have to update cached config. This uglifies our code a lot :((
-            let
-                ( newConfig, configCmd ) =
-                    Config.update model.sharedState configMsg subModel
-            in
-            ( { model | configCache = Config.getData newConfig, page = Config newConfig }, Cmd.map ConfigMsg configCmd )
+        ( Config subModel, ConfigMsg subMsg ) ->
+            Config.update model.sharedState subMsg subModel
+                |> updateWith Config ConfigMsg model
 
         ( Workout subModel, WorkoutMsg subMsg ) ->
             Workout.update model.sharedState subMsg subModel
@@ -299,22 +306,41 @@ update msg model =
             ( model, Cmd.none )
 
 
-updateWith : (subModel -> Page) -> (subMsg -> Msg) -> Model -> ( subModel, Cmd subMsg ) -> ( Model, Cmd Msg )
-updateWith toPage toMsg model ( subModel, subMsg ) =
-    ( { model | page = toPage subModel }
+updateWith :
+    (subModel -> Page)
+    -> (subMsg -> Msg)
+    -> Model
+    -> ( subModel, Cmd subMsg, SharedStateUpdate subMsg )
+    -> ( Model, Cmd Msg )
+updateWith toPage toMsg model ( subModel, subMsg, ssUpdate ) =
+    let
+        ( newModel, newCmd ) =
+            case ssUpdate of
+                SharedState.PopupCmd popupCmd ->
+                    ( { model | popup = PopupCmd.getPopup <| PopupCmd.map toMsg popupCmd }
+                    , Cmd.none
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
+    in
+    ( { newModel
+        | page = toPage subModel
+        , sharedState = SharedState.update ssUpdate model.sharedState
+      }
     , Cmd.map toMsg subMsg
     )
 
 
-routeToPage : Route -> Data.Config.Data -> SharedState -> ( Page, Cmd Msg )
-routeToPage route configCache sharedState =
+routeToPage : Route -> SharedState -> ( Page, Cmd Msg )
+routeToPage route sharedState =
     case route of
         Routes.Config ->
-            Config.init configCache
+            Config.init sharedState
                 |> initWithPage Config ConfigMsg
 
         Routes.Workout ->
-            Workout.init configCache
+            Workout.init sharedState
                 |> initWithPage Workout WorkoutMsg
 
         Routes.NotFound ->

@@ -11,7 +11,7 @@ import Colours
 import Data.Config
 import Data.Duration as Duration
 import Data.Flags exposing (Flags, Images)
-import Data.SharedState as SharedState exposing (SharedState)
+import Data.SharedState as SharedState exposing (SharedState, SharedStateUpdate)
 import Data.TimeBlock as TimeBlock
 import Data.Workout as Data exposing (Data)
 import Element exposing (Element)
@@ -49,12 +49,12 @@ type alias AppModel =
 -- should only be called once
 
 
-init : Data.Config.Data -> ( Model, Cmd Msg )
-init data =
+init : SharedState -> ( Model, Cmd Msg )
+init ({ configCache } as sharedState) =
     ( Model
         { keys = []
         }
-        (Data.fromConfig data)
+        (Data.fromConfig configCache)
     , Cmd.none
     )
 
@@ -854,7 +854,7 @@ type Msg
     | KeyMsg Keyboard.Msg -- so we can react upon the space key press
 
 
-update : SharedState -> Msg -> Model -> ( Model, Cmd Msg )
+update : SharedState -> Msg -> Model -> ( Model, Cmd Msg, SharedStateUpdate Msg )
 update sharedState msg (Model model data) =
     case msg of
         NavigateTo alwaysOn route ->
@@ -867,6 +867,7 @@ update sharedState msg (Model model data) =
                   else
                     Cmd.none
                 ]
+            , SharedState.NoUpdate
             )
 
         StartExercise workoutData ->
@@ -879,6 +880,7 @@ update sharedState msg (Model model data) =
                 { sound = Ports.playSound "whistle"
                 , speak = Ports.speak "Workout Started"
                 }
+            , SharedState.NoUpdate
             )
 
         NextSecond ->
@@ -899,6 +901,7 @@ update sharedState msg (Model model data) =
                                         { sound = Ports.playSound "tada"
                                         , speak = Ports.speak "Congratulations! Workout complete."
                                         }
+                                    , SharedState.NoUpdate
                                     )
 
                                 bl :: xs ->
@@ -932,6 +935,7 @@ update sharedState msg (Model model data) =
                                         { sound = Ports.playSound "whistle"
                                         , speak = Ports.speak toSpokenString
                                         }
+                                    , SharedState.NoUpdate
                                     )
 
                         Just newBlock ->
@@ -952,11 +956,12 @@ update sharedState msg (Model model data) =
                             ( Model model
                                 { data | state = Data.InProgress { workoutData | blocksLeft = Nonempty newBlock tl } }
                             , cmd
+                            , SharedState.NoUpdate
                             )
 
                 _ ->
                     -- ignore
-                    ( Model model data, Cmd.none )
+                    ( Model model data, Cmd.none, SharedState.NoUpdate )
 
         TogglePlay ->
             ( Model model { data | playing = not data.playing }
@@ -971,6 +976,7 @@ update sharedState msg (Model model data) =
                     { sound = Ports.playSound "whistle"
                     , speak = Ports.speak "Resumed"
                     }
+            , SharedState.NoUpdate
             )
 
         KeyMsg keyMsg ->
@@ -985,7 +991,7 @@ update sharedState msg (Model model data) =
                 update sharedState TogglePlay (Model newModel data)
 
             else
-                ( Model model data, Cmd.none )
+                ( Model model data, Cmd.none, SharedState.NoUpdate )
 
 
 playSounds : Data -> { sound : Cmd Msg, speak : Cmd Msg } -> Cmd Msg
