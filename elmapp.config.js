@@ -1,3 +1,3 @@
 module.exports = {
-    homepage: "https://joshuaji.com/projects/dev/"
-}
+  homepage: "https://joshuaji.com/",
+};
