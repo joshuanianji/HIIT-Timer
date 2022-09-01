@@ -14,7 +14,6 @@ import Element.Border as Border
 import Element.Font as Font
 import FeatherIcons as Icon
 import File.Download
-import GithubLogo
 import Html exposing (Html)
 import Http
 import Json.Encode
@@ -146,7 +145,6 @@ view model =
         |> Element.layout
             [ Font.family
                 [ Font.typeface "Lato" ]
-            , Element.inFront (githubLogo model.sharedState.device)
             ]
 
 
@@ -217,24 +215,6 @@ iosInstallPopup model =
 
     else
         Element.none
-
-
-githubLogo : Element.Device -> Element Msg
-githubLogo device =
-    if device.class == Element.Desktop || device.class == Element.BigDesktop then
-        GithubLogo.view
-            { href = "https://github.com/joshuanianji/HIIT-Timer"
-            , bgColor = "#000"
-            , bodyColor = "#fff"
-            }
-            |> Element.el
-                [ Element.alignRight
-                , Element.alignTop
-                ]
-
-    else
-        Element.none
-
 
 
 ---- UPDATE ----
