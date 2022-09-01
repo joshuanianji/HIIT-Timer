@@ -19,5 +19,8 @@
   "bugs": {
     "url": "https://github.com/joshuanianji/HIIT-Timer/issues"
   },
-  "homepage": "https://github.com/joshuanianji/HIIT-Timer#readme"
+  "homepage": "https://github.com/joshuanianji/HIIT-Timer#readme",
+  "devDependencies": {
+    "create-elm-app": "^5.22.0"
+  }
 }
